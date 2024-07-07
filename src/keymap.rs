@@ -1,6 +1,16 @@
-use std::collections::HashMap;
+use arc_swap::access::DynAccess;
 
+use crate::custom_event::KeyEvent;
+use core::str;
+use std::collections::HashMap;
+pub mod keyboard;
 pub mod macros;
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+pub enum Mode {
+    Normal = 0,
+    Select = 1,
+    Insert = 2,
+}
 /// 按键字典树中的节点
 #[derive(Debug, Clone, Default)]
 pub struct KeyTrieNode {
@@ -17,6 +27,11 @@ pub enum KeyTrie {
     // MappableCommand(MappableCommand),
     // Sequence(Vec<MappableCommand>),
     Node(KeyTrieNode),
+}
+impl PartialEq for KeyTrieNode {
+    fn eq(&self, other: &Self) -> bool {
+        self.map == other.map
+    }
 }
 
 /// 键盘映射
