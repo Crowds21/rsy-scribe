@@ -17,7 +17,6 @@ use std::{
     io::{self, stdout, Read, Write},
 };
 pub mod commands;
-pub mod custom_event;
 pub mod keymap;
 struct EditorConfig {
     screen_rows: u16,
