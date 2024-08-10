@@ -185,6 +185,4 @@ fn editor_key_event(key_event: KeyEvent) {
     }
 }
 
-fn append_content() {
-    // let
-}
+fn event_handler(key_event: KeyEvent) {}

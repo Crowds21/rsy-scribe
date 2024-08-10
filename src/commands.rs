@@ -1,30 +1,38 @@
-use crossterm::{
-    cursor::{MoveDown, MoveLeft, MoveRight, MoveUp},
-    execute,
-    terminal::{disable_raw_mode, LeaveAlternateScreen},
-    ExecutableCommand,
-};
-use std::io::stdout;
+use common::move_cursor_left;
+use crossterm::event::KeyEvent;
 
-pub fn reset_terminal_and_exit() {
-    let _ = stdout().execute(LeaveAlternateScreen);
-    let _ = disable_raw_mode();
-    std::process::exit(0)
-}
-/// 光标左移len个位置
-/// TODO: 换行判断
-pub fn move_curosr_left() {
-    execute!(stdout(), MoveLeft(1));
-}
+pub mod common;
 
-pub fn move_curosr_right() {
-    execute!(stdout(), MoveRight(1));
-}
-
-pub fn move_curosr_up() {
-    execute!(stdout(), MoveUp(1));
+pub struct Context {}
+pub enum MappableCommand {
+    Typable {
+        name: String,
+        args: Vec<String>,
+        doc: String,
+    },
+    Static {
+        name: &'static str,
+        fun: fn(cx: &mut Context),
+        doc: &'static str,
+    },
+    Macro {
+        name: String,
+        keys: Vec<KeyEvent>,
+    },
 }
 
-pub fn move_curosr_down() {
-    execute!(stdout(), MoveDown(1));
+impl MappableCommand {
+    /// Static的一个实例,通过注解允许不遵循rust命名规范
+    #[allow(non_upper_case_globals)]
+    pub const move_char_left: Self = Self::Static {
+        name: "move_curosr_left",
+        fun: move_cursor_left,
+        doc: "Move left",
+    };
+    #[allow(non_upper_case_globals)]
+    pub const insert_mode: Self = Self::Static {
+        name: "insert_mode",
+        fun: insert_mode,
+        doc: "Insert mode",
+    };
 }
