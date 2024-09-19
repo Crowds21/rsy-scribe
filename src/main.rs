@@ -1,11 +1,11 @@
 use anyhow::Result;
 use crossterm::{
     cursor::{self, MoveTo},
-    event::{self, Event as CrosstermEvent, KeyCode, KeyEvent, KeyModifiers},
+    event::{self, KeyCode, KeyEvent, KeyModifiers},
     execute,
     style::Print,
     terminal::{
-        self, disable_raw_mode, enable_raw_mode, size, Clear, EnterAlternateScreen,
+        self, disable_raw_mode, Clear, EnterAlternateScreen,
         LeaveAlternateScreen,
     },
     ExecutableCommand,

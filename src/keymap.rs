@@ -86,7 +86,7 @@ pub fn default() -> HashMap<Mode, KeyTrie> {
     let mut _map: HashMap<&str, fn()> = HashMap::new();
     // _map.insert("q", crate::commands::common::reset_terminal_and_exit);
     // _map.insert("h", crate::commands::common::move_cursor_left);
-    let mut keymap: HashMap<Mode, KeyTrie> = HashMap::new();
+    let keymap: HashMap<Mode, KeyTrie> = HashMap::new();
 
     // BTreeSet
     // _map.insert("l", crate::commands::move_curosr_right(1));
@@ -130,7 +130,7 @@ pub fn default() -> HashMap<Mode, KeyTrie> {
             // 绑定 "j" 或 "down" 到 move_line_down
             m.insert(
                 KeyEvent::new(KeyCode::Char('j'), KeyModifiers::NONE),
-                KeyTrie::MappableCommand(MappableCommand::move_line_down),
+                KeyTrie::MappableCommand(MappableCommand::move_cursor_down),
             );
             // 假设有一个处理 "|" 操作的方式，可能需要额外的宏逻辑
             // 这里省略了 "down" 的绑定，因为它需要特殊处理
@@ -238,21 +238,25 @@ fn str_to_keycode(s: &str) -> Result<KeyEvent, Error> {
 }
 
 #[cfg(test)]
-mod test {
-    use crate::keymap;
+mod tests {
+    use super::macros::hashmap;
+    use super::macros::keymap;
+    use super::*;
 
+    #[test]
     fn test_macro() {
         let normal = keymap!({"Normal mode"
-            "h" | "left" => move_char_left,
-            "j" | "down" => move_visual_line_down,
-            "k" | "up" => move_visual_line_up,
-            "l" | "right" => move_char_right,
+            "h" | "left" => move_cursor_left,
+            "j" | "down" => move_cursor_down,
+            "k" | "up" => move_cursor_up,
+            "l" | "right" => move_cursor_right,
             "v" => select_mode,
             "G" => goto_line,
             "g" => { "Goto"
                 "g" => goto_file_start,
-                "e" => goto_last_line,
+                "e" => goto_word_end,
             },
         });
+        println!("Normal-KeyTire{:#?}", normal);
     }
 }

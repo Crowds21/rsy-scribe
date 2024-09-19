@@ -121,7 +121,7 @@ macro_rules! keymap {
             let mut _order = ::std::vec::Vec::with_capacity(_cap);
             $(
                 $(
-                    let _key = crate::keymap::str_to_keycode($key);
+                    let _key = crate::keymap::str_to_keycode($key).unwrap();
                     let _duplicate = _map.insert(
                         _key,
                         keymap!(@trie $value)
@@ -136,3 +136,10 @@ macro_rules! keymap {
         }
     };
 }
+
+pub use alt;
+pub use ctrl;
+pub use hashmap;
+pub use key;
+pub use keymap;
+pub use shift;

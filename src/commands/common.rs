@@ -39,3 +39,12 @@ pub fn goto_file_start(cx: &mut Context) {
 pub fn goto_file_end(cx: &mut Context) {
     //
 }
+pub fn goto_word_end(cx: &mut Context) {
+    //
+}
+pub fn select_mode(cx: &mut Context) {
+    //
+}
+pub fn goto_line(cx: &mut Context) {
+    //
+}
