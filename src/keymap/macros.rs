@@ -121,7 +121,7 @@ macro_rules! keymap {
             let mut _order = ::std::vec::Vec::with_capacity(_cap);
             $(
                 $(
-                    let _key = crossterm::event::KeyCode::Char($key);
+                    let _key = crate::keymap::str_to_keycode($key);
                     let _duplicate = _map.insert(
                         _key,
                         keymap!(@trie $value)
