@@ -1,3 +1,85 @@
+#[macro_export]
+macro_rules! hashmap {
+    (@single $($x:tt)*) => (());
+    (@count $($rest:expr),*) => (<[()]>::len(&[$(hashmap!(@single $rest)),*]));
+
+    ($($key:expr => $value:expr,)+) => { hashmap!($($key => $value),+) };
+    ($($key:expr => $value:expr),*) => {
+        {
+            let _cap = hashmap!(@count $($key),*);
+            let mut _map = ::std::collections::HashMap::with_capacity(_cap);
+            $(
+                let _ = _map.insert($key, $value);
+            )*
+            _map
+        }
+    };
+}
+
+#[macro_export]
+macro_rules! key {
+    ($key:ident) => {
+        ::helix_view::input::KeyEvent {
+            code: ::helix_view::keyboard::KeyCode::$key,
+            modifiers: ::helix_view::keyboard::KeyModifiers::NONE,
+        }
+    };
+    ($($ch:tt)*) => {
+        ::helix_view::input::KeyEvent {
+            code: ::helix_view::keyboard::KeyCode::Char($($ch)*),
+            modifiers: ::helix_view::keyboard::KeyModifiers::NONE,
+        }
+    };
+}
+
+#[macro_export]
+macro_rules! shift {
+    ($key:ident) => {
+        ::helix_view::input::KeyEvent {
+            code: ::helix_view::keyboard::KeyCode::$key,
+            modifiers: ::helix_view::keyboard::KeyModifiers::SHIFT,
+        }
+    };
+    ($($ch:tt)*) => {
+        ::helix_view::input::KeyEvent {
+            code: ::helix_view::keyboard::KeyCode::Char($($ch)*),
+            modifiers: ::helix_view::keyboard::KeyModifiers::SHIFT,
+        }
+    };
+}
+
+#[macro_export]
+macro_rules! ctrl {
+    ($key:ident) => {
+        ::helix_view::input::KeyEvent {
+            code: ::helix_view::keyboard::KeyCode::$key,
+            modifiers: ::helix_view::keyboard::KeyModifiers::CONTROL,
+        }
+    };
+    ($($ch:tt)*) => {
+        ::helix_view::input::KeyEvent {
+            code: ::helix_view::keyboard::KeyCode::Char($($ch)*),
+            modifiers: ::helix_view::keyboard::KeyModifiers::CONTROL,
+        }
+    };
+}
+
+#[macro_export]
+macro_rules! alt {
+    ($key:ident) => {
+        ::helix_view::input::KeyEvent {
+            code: ::helix_view::keyboard::KeyCode::$key,
+            modifiers: ::helix_view::keyboard::KeyModifiers::ALT,
+        }
+    };
+    ($($ch:tt)*) => {
+        ::helix_view::input::KeyEvent {
+            code: ::helix_view::keyboard::KeyCode::Char($($ch)*),
+            modifiers: ::helix_view::keyboard::KeyModifiers::ALT,
+        }
+    };
+}
+
 /// Macro for defining a `KeyTrie`. Example:
 ///
 /// ```
@@ -13,7 +95,6 @@
 /// });
 /// let keymap = normal_mode;
 /// ```
-/// 每个宏都有一个明成分
 #[macro_export]
 macro_rules! keymap {
     (@trie $cmd:ident) => {
@@ -40,7 +121,7 @@ macro_rules! keymap {
             let mut _order = ::std::vec::Vec::with_capacity(_cap);
             $(
                 $(
-                    let _key = $key.parse::<::helix_view::input::KeyEvent>().unwrap();
+                    let _key = crossterm::event::KeyCode::Char($key);
                     let _duplicate = _map.insert(
                         _key,
                         keymap!(@trie $value)

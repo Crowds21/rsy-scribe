@@ -177,11 +177,11 @@ fn editor_key_event(key_event: KeyEvent) {
         (KeyCode::Char('c'), KeyModifiers::CONTROL) => {}
 
         (_, KeyModifiers::CONTROL) => {}
-        (KeyCode::Backspace, _) => {
+        (KeyCode::Backspace, _) => {}
+        _ => {
             // execute!(io::stdout(),)
             // cursor::MoveToNextLine
         }
-        _ => {}
     }
 }
 

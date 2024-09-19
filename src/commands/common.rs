@@ -33,3 +33,9 @@ pub fn move_cursor_down(cx: &mut Context) {
 pub fn insert_mode(cx: &mut Context) {
     //
 }
+pub fn goto_file_start(cx: &mut Context) {
+    //
+}
+pub fn goto_file_end(cx: &mut Context) {
+    //
+}
