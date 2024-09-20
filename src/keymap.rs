@@ -148,7 +148,7 @@ pub fn default() -> HashMap<Mode, KeyTrie> {
     return keymap;
 }
 
-/// 用于 keymaps 宏中将
+/// Keymap 宏会调用该函数来将 "字符串"映射到对应的`KeyCode`;
 fn str_to_keycode(s: &str) -> Result<KeyEvent, Error> {
     let mut tokens: Vec<_> = s.split('-').collect();
     let mut code = match tokens.pop().ok_or_else(|| anyhow!("Missing key code"))? {
@@ -244,7 +244,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_macro() {
+    fn test_macro_keymap() {
         let normal = keymap!({"Normal mode"
             "h" | "left" => move_cursor_left,
             "j" | "down" => move_cursor_down,
@@ -257,6 +257,29 @@ mod tests {
                 "e" => goto_word_end,
             },
         });
-        println!("Normal-KeyTire{:#?}", normal);
+
+        //println!("Normal-KeyTire{:#?}", normal);
+        assert!(
+            matches!(normal, KeyTrie::Node(_)),
+            "Test NormalKeyTrie type"
+        );
+        let key_trie_node = match normal {
+            KeyTrie::Node(n) => n,
+            _ => panic!("Expected Node"),
+        };
+        assert_eq!(key_trie_node.name, "Normal mode", "Test NormalKeyTrie name");
+
+        let key_event_j = key_trie_node
+            .map
+            .get(&KeyEvent::new(KeyCode::Char('j'), KeyModifiers::NONE));
+        assert!(key_event_j.is_some(), "Get key event `j`");
+        let key_event_down = key_trie_node
+            .map
+            .get(&KeyEvent::new(KeyCode::Down, KeyModifiers::NONE));
+        assert!(key_event_down.is_some(), "Get key event `g`");
+        let key_event_g = key_trie_node
+            .map
+            .get(&KeyEvent::new(KeyCode::Char('g'), KeyModifiers::NONE));
+        assert!(key_event_g.is_some(), "Get key event `g`");
     }
 }
