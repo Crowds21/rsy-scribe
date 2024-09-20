@@ -149,6 +149,7 @@ pub fn default() -> HashMap<Mode, KeyTrie> {
 }
 
 /// Keymap 宏会调用该函数来将 "字符串"映射到对应的`KeyCode`;
+#[allow(dead_code)]
 fn str_to_keycode(s: &str) -> Result<KeyEvent, Error> {
     let mut tokens: Vec<_> = s.split('-').collect();
     let mut code = match tokens.pop().ok_or_else(|| anyhow!("Missing key code"))? {
