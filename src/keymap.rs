@@ -7,7 +7,13 @@ use crossterm::event::{
     KeyCode, KeyEvent, KeyEventKind, KeyEventState, KeyModifiers, ModifierKeyCode,
 };
 use keyboard::keys;
-use std::{collections::HashMap, sync::Arc};
+use macros::key;
+use std::{
+    borrow::Cow,
+    collections::HashMap,
+    ops::{Deref, DerefMut},
+    sync::Arc,
+};
 
 use crate::commands::MappableCommand;
 pub mod keyboard;
@@ -22,7 +28,7 @@ pub enum Mode {
 pub struct Context {}
 /// KeyBindgTree的节点
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct KeyTrieNode {
     name: String,
     map: HashMap<KeyEvent, KeyTrie>,
@@ -31,11 +37,25 @@ pub struct KeyTrieNode {
 }
 
 /// KeyBindTree
-#[derive(Debug)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum KeyTrie {
     MappableCommand(MappableCommand),
     Sequence(Vec<MappableCommand>),
     Node(KeyTrieNode),
+}
+
+impl KeyTrie {
+    /// [KeyEvent]一个 KeyEvent 类型元素的切片
+    pub fn search(&self, keys: &[KeyEvent]) -> Option<&KeyTrie> {
+        let mut trie = self;
+        for key in keys {
+            trie = match trie {
+                KeyTrie::Node(map) => map.get(key),
+                KeyTrie::MappableCommand(_) | KeyTrie::Sequence(_) => None,
+            }?
+        }
+        Some(trie)
+    }
 }
 
 impl KeyTrieNode {
@@ -48,16 +68,53 @@ impl KeyTrieNode {
         }
     }
 }
+
+impl PartialEq for KeyTrieNode {
+    fn eq(&self, other: &Self) -> bool {
+        self.map == other.map
+    }
+}
+
+impl Deref for KeyTrieNode {
+    type Target = HashMap<KeyEvent, KeyTrie>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.map
+    }
+}
+
+impl DerefMut for KeyTrieNode {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.map
+    }
+}
+#[derive(Debug, Clone, PartialEq)]
+pub enum KeymapResult {
+    /// Needs more keys to execute a command. Contains valid keys for next keystroke.
+    Pending(KeyTrieNode),
+    Matched(MappableCommand),
+    /// Matched a sequence of commands to execute.
+    MatchedSequence(Vec<MappableCommand>),
+    /// Key was not found in the root keymap
+    NotFound,
+    /// Key is invalid in combination with previous keys. Contains keys leading upto
+    /// and including current (invalid) key.
+    Cancelled(Vec<KeyEvent>),
+}
 pub struct Keymaps {
     pub map: Box<dyn DynAccess<HashMap<Mode, KeyTrie>>>,
-    /// 用户输入待处理的事件
+    /// Stores pending keys waiting for the next key. This is relative to a
+    /// sticky node if one is in use.
     state: Vec<KeyEvent>,
+    /// Stores the sticky node if one is activated.
+    pub sticky: Option<KeyTrieNode>,
 }
 impl Keymaps {
     pub fn new(map: Box<dyn DynAccess<HashMap<Mode, KeyTrie>>>) -> Keymaps {
         return Self {
             map,
             state: Vec::new(),
+            sticky: None,
         };
     }
     /// 通过load函数获取DynAccess中的值
@@ -65,87 +122,65 @@ impl Keymaps {
         self.map.load()
     }
 
-    /// 根据mode获取该类别下的所有快捷键,在通过传入的KeyEvnet过滤
-    pub fn resolver_key_event(&mut self, mode: Mode, key: KeyEvent) {
+    /// Lookup `key` in the keymap to try and find a command to execute. Escape
+    /// key cancels pending keystrokes. If there are no pending keystrokes but a
+    /// sticky node is in use, it will be cleared.
+    pub fn get(&mut self, mode: Mode, key: KeyEvent) -> KeymapResult {
+        // TODO: remove the sticky part and look up manually
         let keymaps = &*self.map();
         let keymap = &keymaps[&mode];
-        if KeyCode::Esc == key.code {
-            //TODO: 返回一个KeymapResult::Cancelled
-            return;
+        if key!(Esc) == key {
+            if !self.state.is_empty() {
+                // Note that Esc is not included here
+                return KeymapResult::Cancelled(self.state.drain(..).collect());
+            }
+            self.sticky = None;
+        }
+
+        let first = self.state.first().unwrap_or(&key);
+        let trie_node = match self.sticky {
+            Some(ref trie) => Cow::Owned(KeyTrie::Node(trie.clone())),
+            None => Cow::Borrowed(keymap),
+        };
+
+        let trie = match trie_node.search(&[*first]) {
+            Some(KeyTrie::MappableCommand(ref cmd)) => {
+                return KeymapResult::Matched(cmd.clone());
+            }
+            Some(KeyTrie::Sequence(ref cmds)) => {
+                return KeymapResult::MatchedSequence(cmds.clone());
+            }
+            None => return KeymapResult::NotFound,
+            Some(t) => t,
+        };
+
+        self.state.push(key);
+        match trie.search(&self.state[1..]) {
+            Some(KeyTrie::Node(map)) => {
+                if map.is_sticky {
+                    self.state.clear();
+                    self.sticky = Some(map.clone());
+                }
+                KeymapResult::Pending(map.clone())
+            }
+            Some(KeyTrie::MappableCommand(cmd)) => {
+                self.state.clear();
+                KeymapResult::Matched(cmd.clone())
+            }
+            Some(KeyTrie::Sequence(cmds)) => {
+                self.state.clear();
+                KeymapResult::MatchedSequence(cmds.clone())
+            }
+            None => KeymapResult::Cancelled(self.state.drain(..).collect()),
         }
     }
 }
 
+pub mod default;
 impl Default for Keymaps {
     fn default() -> Self {
-        Self::new(Box::new(ArcSwap::new(Arc::new(default()))))
+        Self::new(Box::new(ArcSwap::new(Arc::new(default::default_keymap()))))
     }
-}
-pub fn default() -> HashMap<Mode, KeyTrie> {
-    let _cap = 3;
-    let mut _map: HashMap<&str, fn()> = HashMap::new();
-    // _map.insert("q", crate::commands::common::reset_terminal_and_exit);
-    // _map.insert("h", crate::commands::common::move_cursor_left);
-    let keymap: HashMap<Mode, KeyTrie> = HashMap::new();
-
-    // BTreeSet
-    // _map.insert("l", crate::commands::move_curosr_right(1));
-
-    // let mut _map = ::std::collections::HashMap::with_capacity(_cap);
-    // let mut _node = KeyTrieNode::new("Normal mode",_map,_order);
-    // let mut _order = ::std::vec::Vec::with_capacity(_cap);
-    let normal_mode = KeyTrie::Node(KeyTrieNode {
-        name: "Normal mode".to_owned(),
-        is_sticky: false, // 除非在示例中指定了 sticky 属性
-        map: {
-            let mut m = HashMap::new();
-            m.insert(
-                KeyEvent::new(KeyCode::Char('i'), KeyModifiers::NONE), // 假设这是将字符 'i' 转换为 KeyEvent 的方式
-                KeyTrie::MappableCommand(MappableCommand::insert_mode),
-            );
-            // 绑定 "g" 到一个子 KeyTrie
-            m.insert(
-                KeyEvent::new(KeyCode::Char('g'), KeyModifiers::NONE),
-                KeyTrie::Node(KeyTrieNode {
-                    name: "Goto".to_string(),
-                    is_sticky: false,
-                    map: {
-                        let mut n = HashMap::new();
-                        n.insert(
-                            KeyEvent::new(KeyCode::Char('g'), KeyModifiers::NONE),
-                            KeyTrie::MappableCommand(MappableCommand::goto_file_start),
-                        );
-                        n.insert(
-                            KeyEvent::new(KeyCode::Char('e'), KeyModifiers::NONE),
-                            KeyTrie::MappableCommand(MappableCommand::goto_file_end),
-                        );
-                        n
-                    },
-                    order: vec![
-                        KeyEvent::new(KeyCode::Char('g'), KeyModifiers::NONE),
-                        KeyEvent::new(KeyCode::Char('e'), KeyModifiers::NONE),
-                    ],
-                }),
-            );
-            // 绑定 "j" 或 "down" 到 move_line_down
-            m.insert(
-                KeyEvent::new(KeyCode::Char('j'), KeyModifiers::NONE),
-                KeyTrie::MappableCommand(MappableCommand::move_cursor_down),
-            );
-            // 假设有一个处理 "|" 操作的方式，可能需要额外的宏逻辑
-            // 这里省略了 "down" 的绑定，因为它需要特殊处理
-            m
-        },
-        order: vec![
-            KeyEvent::new(KeyCode::Char('i'), KeyModifiers::NONE),
-            KeyEvent::new(KeyCode::Char('i'), KeyModifiers::NONE),
-            KeyEvent::new(KeyCode::Char('j'), KeyModifiers::NONE),
-        ],
-    });
-
-    let mut keymap = HashMap::new();
-    keymap.insert(Mode::Insert, normal_mode);
-    return keymap;
 }
 
 /// Keymap 宏会调用该函数来将 "字符串"映射到对应的`KeyCode`;
@@ -258,7 +293,6 @@ mod tests {
                 "e" => goto_word_end,
             },
         });
-
         //println!("Normal-KeyTire{:#?}", normal);
         assert!(
             matches!(normal, KeyTrie::Node(_)),

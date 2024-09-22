@@ -16,18 +16,32 @@ macro_rules! hashmap {
     };
 }
 
+/// 示例:
+/// ```
+/// key!(Esc)
+/// key!(KeyEvent::Esc)
+/// key!('j')
+/// ```
 #[macro_export]
 macro_rules! key {
     ($key:ident) => {
-        ::helix_view::input::KeyEvent {
-            code: ::helix_view::keyboard::KeyCode::$key,
-            modifiers: ::helix_view::keyboard::KeyModifiers::NONE,
-        }
+        ::crossterm::event::KeyEvent::new(
+           ::crossterm::event::KeyCode::$key,
+           ::crossterm::event::KeyModifiers::NONE,
+        )
+    };
+    ($mod:ident :: $key:ident) => {
+        ::crossterm::event::KeyEvent::new(
+            code: ::crossterm::event::$mod ::$key,
+            modifiers: ::crossterm::event::KeyModifiers::NONE,
+        )
     };
     ($($ch:tt)*) => {
-        ::helix_view::input::KeyEvent {
-            code: ::helix_view::keyboard::KeyCode::Char($($ch)*),
-            modifiers: ::helix_view::keyboard::KeyModifiers::NONE,
+        ::crossterm::event::KeyEvent::{
+            code: ::crossterm::event::KeyCode::Char($($ch)*),
+            modifiers: ::crossterm::event::KeyModifiers::NONE,
+            kind: KeyEventKind::Press,
+            state: KeyEventState::empty(),
         }
     };
 }

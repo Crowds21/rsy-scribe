@@ -4,12 +4,10 @@ use crossterm::{
     event::{self, KeyCode, KeyEvent, KeyModifiers},
     execute,
     style::Print,
-    terminal::{
-        self, disable_raw_mode, Clear, EnterAlternateScreen,
-        LeaveAlternateScreen,
-    },
+    terminal::{self, disable_raw_mode, Clear, EnterAlternateScreen, LeaveAlternateScreen},
     ExecutableCommand,
 };
+use keymap::KeyTrie;
 use ropey::Rope;
 use std::{
     char,
@@ -42,14 +40,12 @@ impl EditorConfig {
     }
 
     fn editor_open(&mut self) -> Result<()> {
-        // let content = "Hello world!";
         // self.text.insert(0, content);
         // TODO: Cannot recongise `~`. Need to parse manually
         let mut file = File::open("/Users/crowds/Scripts/orgmode/index.norg")?;
         // 创建一个字符串缓冲区来存储文件内容
         let mut contents = String::new();
         file.read_to_string(&mut contents)?;
-
         // 将字符串转换为 Rope
         self.text = Rope::from_str(&contents);
         // self.text.len_lines();
@@ -183,6 +179,7 @@ fn editor_key_event(key_event: KeyEvent) {
             // cursor::MoveToNextLine
         }
     }
-}
 
-fn event_handler(key_event: KeyEvent) {}
+    /// Crossterm循环中,处理事件输入
+    fn key_envent_handler(key_event: KeyEvent, key_tire: KeyTrie) {}
+}

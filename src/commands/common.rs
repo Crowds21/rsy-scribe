@@ -1,3 +1,4 @@
+use super::*;
 use crossterm::{
     cursor::{MoveDown, MoveLeft, MoveRight, MoveUp},
     execute,
@@ -5,8 +6,6 @@ use crossterm::{
     ExecutableCommand,
 };
 use std::io::stdout;
-
-use super::Context;
 
 pub fn reset_terminal_and_exit() {
     let _ = stdout().execute(LeaveAlternateScreen);
@@ -33,6 +32,7 @@ pub fn move_cursor_down(cx: &mut Context) {
 pub fn insert_mode(cx: &mut Context) {
     //
 }
+
 pub fn goto_file_start(cx: &mut Context) {
     //
 }
