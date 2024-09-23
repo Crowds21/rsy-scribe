@@ -15,16 +15,10 @@ use std::{
     sync::Arc,
 };
 
-use crate::commands::MappableCommand;
+use crate::{application::Mode, commands::MappableCommand};
 pub mod keyboard;
 pub mod macros;
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
-pub enum Mode {
-    Normal = 0,
-    Select = 1,
-    Insert = 2,
-    Command = 3,
-}
+
 pub struct Context {}
 /// KeyBindgTree的节点
 

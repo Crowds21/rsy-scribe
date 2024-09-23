@@ -7,15 +7,16 @@ use crossterm::{
     terminal::{self, disable_raw_mode, Clear, EnterAlternateScreen, LeaveAlternateScreen},
     ExecutableCommand,
 };
-use keymap::KeyTrie;
 use ropey::Rope;
 use std::{
     char,
     fs::File,
     io::{self, stdout, Read, Write},
 };
+pub mod application;
 pub mod commands;
 pub mod keymap;
+use keymap::KeyTrie;
 struct EditorConfig {
     screen_rows: u16,
     screen_cols: u16,
@@ -59,13 +60,6 @@ impl EditorConfig {
         execute!(stdout(), EnterAlternateScreen)?;
         terminal::enable_raw_mode()?;
         Ok(())
-    }
-
-    /// Leave editor mode,reset the terminal
-    fn leave_editor_mode(&self) {
-        let _ = stdout().execute(LeaveAlternateScreen);
-        let _ = disable_raw_mode();
-        std::process::exit(0)
     }
 
     /// Get and save windows size
@@ -140,11 +134,6 @@ fn main() -> io::Result<()> {
         if let event::Event::Key(key_event) = event::read()? {
             editor_key_event(key_event);
         }
-        // let _ = editor_refresh_screen();
-        // match editor_process_keypress() {
-        //     Ok(result) => {}
-        //     Err(e) => {}
-        // }
     }
     // Ok(())
 }
@@ -181,5 +170,4 @@ fn editor_key_event(key_event: KeyEvent) {
     }
 
     /// Crossterm循环中,处理事件输入
-    fn key_envent_handler(key_event: KeyEvent, key_tire: KeyTrie) {}
 }

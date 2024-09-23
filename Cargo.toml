@@ -17,3 +17,10 @@ arc-swap = "1.7.1"
 bitflags = "2.5"
 unicode-width = "0.1"
 serde = "1"
+
+
+tokio-stream = "0.1"
+futures-util = { version = "0.3", features = [
+    "std",
+    "async-await",
+], default-features = false }
