@@ -16,7 +16,7 @@ use std::{
 pub mod application;
 pub mod commands;
 pub mod keymap;
-use keymap::KeyTrie;
+pub mod syapi;
 struct EditorConfig {
     screen_rows: u16,
     screen_cols: u16,
@@ -168,6 +168,4 @@ fn editor_key_event(key_event: KeyEvent) {
             // cursor::MoveToNextLine
         }
     }
-
-    /// Crossterm循环中,处理事件输入
 }
