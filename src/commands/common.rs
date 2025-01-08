@@ -48,3 +48,12 @@ pub fn select_mode(cx: &mut Context) {
 pub fn goto_line(cx: &mut Context) {
     //
 }
+
+
+pub fn search_in_current_file(cx:&mut Context) {
+    //
+}
+
+pub fn search_globally(cx:&mut Context) {
+    //
+}

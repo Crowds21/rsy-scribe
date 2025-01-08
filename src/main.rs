@@ -17,6 +17,8 @@ pub mod application;
 pub mod commands;
 pub mod keymap;
 pub mod syapi;
+mod view;
+
 struct EditorConfig {
     screen_rows: u16,
     screen_cols: u16,
@@ -40,6 +42,7 @@ impl EditorConfig {
         }
     }
 
+    /// 编辑器启动.
     fn editor_open(&mut self) -> Result<()> {
         // self.text.insert(0, content);
         // TODO: Cannot recongise `~`. Need to parse manually
@@ -122,6 +125,7 @@ fn main() -> io::Result<()> {
     let mut editor_config = EditorConfig::new();
     editor_config.enter_editor_mode()?;
     editor_config.get_window_size();
+
     editor_config.editor_open().unwrap();
     // execute!(cursor::Hide).unwrap();
     // 这里可以添加一些屏幕绘制的操作

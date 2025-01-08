@@ -14,6 +14,11 @@ pub fn default_keymap() -> HashMap<Mode, KeyTrie> {
             "g" => goto_file_start,
             "e" => goto_word_end,
         },
+
+        "space" => { "Space"
+            "f" => search_in_current_file,
+            "F" => search_globally,
+        },
         ":" => command_mode,
     });
     hashmap!(

@@ -65,13 +65,13 @@ mod test {
     #[tokio::test]
     async fn test_get_document_list_by_title() {
         let result = search_doc_with_title(String::from("rust")).await;
-        match result { 
+        match result {
             Ok(resp) => {
                 assert_eq!(resp.code, 0);
                 assert!(resp.data.len() > 0);
             }
             Err(resp) => {
-                
+
             }
         }
     }

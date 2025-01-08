@@ -55,5 +55,8 @@ impl MappableCommand {
         goto_file_start, "Goto file start",
         command_mode, "Enter command mode",
         select_mode,  "Select mode",
+
+        search_in_current_file, "Search in current file",
+        search_globally, "Search globally",
     );
 }
