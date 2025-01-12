@@ -19,6 +19,7 @@ pub fn default_keymap() -> HashMap<Mode, KeyTrie> {
             "f" => search_in_current_file,
             "F" => search_globally,
         },
+        "q" => reset_terminal_and_exit,
         ":" => command_mode,
     });
     hashmap!(

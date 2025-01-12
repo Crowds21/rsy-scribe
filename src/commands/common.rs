@@ -7,7 +7,8 @@ use crossterm::{
 };
 use std::io::stdout;
 
-pub fn reset_terminal_and_exit() {
+/// Reset the terminal before exit
+pub fn reset_terminal_and_exit(cx: &mut Context) {
     let _ = stdout().execute(LeaveAlternateScreen);
     let _ = disable_raw_mode();
     std::process::exit(0)
@@ -55,5 +56,6 @@ pub fn search_in_current_file(cx:&mut Context) {
 }
 
 pub fn search_globally(cx:&mut Context) {
-    //
+
 }
+

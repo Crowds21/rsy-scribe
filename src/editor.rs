@@ -1,21 +1,19 @@
 use std::{fs::File, io::Read};
 
-use super::Mode;
-use super::*;
+use crate::application::Mode;
+use crate::application::*;
 use anyhow::Error;
 
 pub struct Editor {
     pub mode: Mode,
-    pub documents: String,
 }
 
 impl Editor {
     pub fn new() -> Self {
-        let backend = CrosstermBackend::new(stdout());
-        let terminal = MyTerminal::new(backend).unwrap();
+        // let backend = CrosstermBackend::new(stdout());
+        // let terminal = MyTerminal::new(backend).unwrap();
         Self {
             mode: Mode::Normal,
-            documents: editor_open().unwrap(),
         }
     }
 }

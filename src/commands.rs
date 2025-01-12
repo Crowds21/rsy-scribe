@@ -58,5 +58,6 @@ impl MappableCommand {
 
         search_in_current_file, "Search in current file",
         search_globally, "Search globally",
+        reset_terminal_and_exit, "Reset terminal and exit",
     );
 }
