@@ -1,0 +1,35 @@
+use serde::{Deserialize, Serialize};
+#[derive(Serialize, Deserialize, Debug)]
+pub struct SyResponse{
+    pub code: i32,
+    pub msg: String,
+    pub data: Vec<SyBlock>,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct SyBlock {
+    pub alias: String,
+    /// 笔记本 id
+    #[serde(rename = "box")]
+    pub box_id : String,
+    pub content: String,
+    #[serde(rename = "created")]
+    pub created_at: String,
+    pub fcontent: String,
+    pub hash: String,
+    pub hpath: String,
+    pub ial: String,
+    pub id: String,
+    pub length: i32,
+    pub markdown: String,
+    pub memo: String,
+    pub name: String,
+    pub parent_id: String,
+    pub path: String,
+    pub root_id: String,
+    pub sort: i32,
+    pub subtype: String,
+    pub tag: String,
+    pub type_: String,
+    pub updated: String,
+}
