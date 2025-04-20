@@ -6,6 +6,7 @@
       <sourceFolder url="file://$MODULE_DIR$/src" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/syservice/src" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/tui/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/view/src" isTestSource="false" />
       <excludeFolder url="file://$MODULE_DIR$/syservice/target" />
       <excludeFolder url="file://$MODULE_DIR$/target" />
     </content>

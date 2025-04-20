@@ -1,20 +1,24 @@
+use std::any::Any;
 // 参考 Helix 实现的 UI 调度器
-use crate::editor::EditorView;
-use crate::job::Jobs;
-use crate::searchbox::SearchBox;
-use crate::Component;
-use crossterm::event::{Event, KeyEvent};
+use crate::component::component_editor::EditorView;
+use crate::component::Component;
+use crate::uiconfig::theme::Theme;
+use crossterm::event::{Event, KeyEvent, KeyEventKind};
 use ratatui::{
     prelude::*,
     style::{Modifier, Style},
     widgets::*,
 };
+use tokio::sync::mpsc;
 
 /// 回调
 pub type Callback = Box<dyn FnOnce(&mut Compositor, &mut CompositorContext)>;
 
+pub type EditorCompositorCallback = Box<dyn FnOnce(&mut Compositor) + Send>;
 pub enum EventResult {
+    /// 交由下一层 ui 处理
     Ignored(Option<Callback>),
+    /// 表示上一层已经处理
     Consumed(Option<Callback>),
 }
 /// UI 组合器
@@ -24,18 +28,24 @@ pub struct Compositor {
 
 /// 全局状态管理
 pub struct CompositorContext {
-    // pub jobs: Jobs
+    theme: Theme,
+    pub callback_sender: mpsc::UnboundedSender<EditorCompositorCallback>,
+    pub callback_receiver: mpsc::UnboundedReceiver<EditorCompositorCallback>,
 }
-impl CompositorContext {
-    pub fn new() -> Self {
-        Self {}
-    }
+
+pub struct CallbackHandle {
+    sender: mpsc::UnboundedSender<EditorCompositorCallback>,
 }
+
+
 impl Compositor {
-    pub fn new() -> Self {
+    pub fn new() -> Compositor {
         let editor: Box<dyn Component> = Box::new(EditorView::new());
         let layers = vec![editor];
-        Self { layers }
+        Self {
+            layers,
+
+        }
     }
     pub fn render(&mut self, frame: &mut Frame, surface: Rect) {
         for layer in &mut self.layers {
@@ -44,24 +54,22 @@ impl Compositor {
     }
 
     pub fn handle_event(&mut self, event: KeyEvent, cx: &mut CompositorContext) -> bool {
-
         let mut callbacks = Vec::new();
         for layer in self.layers.iter_mut().rev() {
             match layer.handle_event(event, cx) {
                 EventResult::Consumed(Some(callback)) => {
                     callbacks.push(callback);
+                    break;
                 }
-                EventResult::Consumed(None) => {}
+                EventResult::Consumed(None) => break,
                 _ => {}
             }
         }
-        //由于 Rust 的
         for callback in callbacks {
             callback(self, cx)
         }
         false
     }
-
     pub fn cursor_position(&self, area: Rect) -> Option<(u16, u16)> {
         for layer in self.layers.iter().rev() {
             if let Some(pos) = layer.cursor_position(area) {
@@ -77,5 +85,40 @@ impl Compositor {
 
     pub fn pop(&mut self) -> Option<Box<dyn Component>> {
         self.layers.pop()
+    }
+
+    pub fn find_mut(&mut self,id: Option<&'static str>) -> Option<&mut dyn Component> {
+        self.layers
+            .iter_mut()
+            .find(|layer| layer.id() == id)
+            .and_then(|component| component.as_any_mut().downcast_mut::<T>())
+    }
+
+
+}
+
+impl CompositorContext {
+    pub fn new() -> Self {
+        let (tx, rx) = mpsc::unbounded_channel();
+        Self {
+            theme: Theme::default(),
+            callback_sender: tx,
+            callback_receiver: rx,
+        }
+    }
+    /// 获取回调处理器（供组件使用）
+    pub fn callback(&self) -> CallbackHandle {
+        CallbackHandle {
+            sender: self.callback_sender.clone(),
+        }
+    }
+}
+
+impl CallbackHandle {
+    pub fn invoke<F>(self, f: F)
+    where
+        F: FnOnce(&mut Compositor) + Send + 'static,
+    {
+        let _ = self.sender.send(Box::new(f));
     }
 }

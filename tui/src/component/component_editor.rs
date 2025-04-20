@@ -1,7 +1,7 @@
 use crossterm::event::{KeyCode, KeyEvent};
 use crate::compositor::{Compositor, CompositorContext, EventResult};
-use crate::searchbox::SearchBox;
-use crate::Component;
+use crate::component::component_search_box::SearchBox;
+use super::*;
 use ratatui::{
     backend::CrosstermBackend,
     layout::{Constraint, Direction, Layout, Rect},
@@ -9,11 +9,15 @@ use ratatui::{
     widgets::{Block, Borders, Paragraph},
     Frame,
 };
+use crate::component::gutter::{render_gutter, GutterConfig, GutterType};
 
+
+pub const ID: &str = "editor-view";
 pub struct EditorView {
     documents: Vec<String>,      // 模拟文档列表
     status_msg: Option<String>, // 状态消息
     count: Option<u32>,          // 模拟按键计数
+    gutter:GutterConfig
 }
 impl EditorView {
     pub fn new() -> Self {
@@ -23,9 +27,13 @@ impl EditorView {
         Self{
             documents,
             status_msg,
-            count
+            count,
+            gutter: GutterConfig::default()
         }
     }
+
+
+
 }
 
 impl Component for EditorView {
@@ -42,33 +50,46 @@ impl Component for EditorView {
         let mut editor_area = Layout::default()
             .direction(Direction::Vertical)
             .constraints(vec![
-                Constraint::Length(1),
+                Constraint::Length(1), // Buffer line
                 Constraint::Min(1),    // 主编辑器区域
                 Constraint::Length(1), // 状态栏
             ])
             .split(area)[1]; // 主编辑器区域
 
+        // Gutter
+        let (gutter_area, content_area) = {
+            let chunks = Layout::default()
+                .direction(Direction::Horizontal)
+                .constraints(vec![
+                    Constraint::Length(8), // 固定宽度Gutter
+                    Constraint::Min(1),    // 内容区
+                ])
+                .split(editor_area);
+            (chunks[0], chunks[1])
+        };
+        // 渲染Gutter
+        let total_lines = self.documents.first().map_or(1, |d| d.lines().count());
+        // let current_line = self.cursor_position().line.saturating_add(1);
+        render_gutter(frame, gutter_area, &self.gutter, total_lines);
+
+        // Buffer line
         let bufferline_area = Layout::default()
             .direction(Direction::Vertical)
             .constraints(vec![Constraint::Length(1)])
             .split(area)[0];
-
         let bufferline = Paragraph::new("Buffer 1 | Buffer 2")
             .style(Style::default().fg(Color::White))
-            .block(Block::default().borders(Borders::BOTTOM));
+            .block(Block::default().borders(Borders::NONE));
         frame.render_widget(bufferline, bufferline_area);
 
-        // 4. 渲染编辑器内容（简化版：显示当前文档）
-        let temp_str = String::from("result");
-        let doc_content = self
-            .documents
-            .first()
-            .unwrap_or(&temp_str);
-        let editor =
-            Paragraph::new(doc_content.as_str()).block(Block::default().borders(Borders::ALL));
-        frame.render_widget(editor, editor_area);
+        // Editor
+        let temp_content = &String::new();
+        let doc_content = self.documents.first().unwrap_or(temp_content);
+        let editor =  Paragraph::new(doc_content.as_str())
+            .block(Block::default().borders(Borders::NONE));
+        frame.render_widget(editor, content_area, );
 
-        // 5. 渲染状态栏
+        // Status bar
         let status_area = Layout::default()
             .direction(Direction::Vertical)
             .constraints(vec![Constraint::Min(0), Constraint::Length(1)])
@@ -105,5 +126,9 @@ impl Component for EditorView {
 
     fn cursor_position(&self, area: Rect) -> Option<(u16, u16)> {
         todo!()
+    }
+
+    fn id(&self) -> Option<&'static str> {
+        Some(ID)
     }
 }

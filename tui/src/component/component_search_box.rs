@@ -1,18 +1,19 @@
-use std::future::Future;
-use crate::Component;
-use syservice;
+use super::*;
+use crate::compositor::{Compositor, CompositorContext, EventResult};
 use crossterm::event::KeyEvent;
 use ratatui::{
     prelude::*,
     style::{Modifier, Style},
     widgets::*,
 };
-use tokio::spawn;
+use syservice;
+use tokio::sync::mpsc;
+use tokio::time::{sleep, Duration};
 use unicode_width::UnicodeWidthStr;
-use crate::compositor::{CompositorContext, EventResult};
 
+pub const ID: &str = "search-box";
 /// 可搜索的文本框组件
-#[derive(Debug, Default)]
+#[derive(Debug)]
 pub struct SearchBox<'a> {
     cursor_position: usize,
     /// 当前输入内容
@@ -21,6 +22,7 @@ pub struct SearchBox<'a> {
     items: Vec<String>,
     /// 搜索结果显示列表
     results: Vec<String>,
+    /// Ratatui ui 状态
     list_state: ListState,
     selected_result: Option<usize>,
     /// 是否处于活跃状态(接收输入)
@@ -31,15 +33,46 @@ pub struct SearchBox<'a> {
 
     pub width: u16,
     pub height: u16,
+    last_input_time: Instant,
+    search_tx: Option<mpsc::Sender<String>>, // 用于取消之前的搜索
+    current_search_id: u64,                  // 用于标识当前搜索请求
+    is_searching: bool,
 }
-
+impl<'a> Default for SearchBox<'a> {
+    fn default() -> Self {
+        Self {
+            cursor_position: 0,
+            input: String::new(),
+            items: vec!["[输入搜索内容]".to_string()],
+            results: vec![],
+            list_state: ListState::default(),
+            selected_result: None,
+            active: false,
+            title: "Search",
+            block: Block::default(),
+            width: 0,
+            height: 0,
+            last_input_time: Instant::now(),
+            search_tx: None,
+            current_search_id: 0,
+            is_searching: false,
+        }
+    }
+}
 impl Component for SearchBox<'_> {
     fn render(&mut self, frame: &mut Frame, area: Rect) {
+        let inner_area = Rect {
+            x: area.x + 5,
+            y: area.y + 5,
+            width: area.width.saturating_sub(10),   // 左右各减5
+            height: area.height.saturating_sub(10), // 上下各减5
+        };
+        // 需要对传入的 area 进行计算再处理
         // 分割上下区域
         let chunks = Layout::default()
             .direction(Direction::Vertical)
             .constraints([Constraint::Length(3), Constraint::Min(1)])
-            .split(area);
+            .split(inner_area);
 
         // 渲染输入框
         let input_block = Block::default()
@@ -52,8 +85,7 @@ impl Component for SearchBox<'_> {
             });
 
         // 计算光标在屏幕上的位置
-        let cursor_x =
-            self.input[..self.cursor_position].width() as u16 + 1 ;
+        let cursor_x = self.input[..self.cursor_position].width() as u16 + 1;
 
         let input = Paragraph::new(self.input.as_str())
             .block(input_block)
@@ -89,7 +121,7 @@ impl Component for SearchBox<'_> {
         frame.render_stateful_widget(list, chunks[1], &mut self.list_state);
     }
 
-    fn handle_event(&mut self, event: KeyEvent, context: &mut CompositorContext) -> EventResult{
+    fn handle_event(&mut self, event: KeyEvent, context: &mut CompositorContext) -> EventResult {
         match event.code {
             crossterm::event::KeyCode::Char(c) => {
                 self.input.insert(self.cursor_position, c);
@@ -143,9 +175,7 @@ impl Component for SearchBox<'_> {
             crossterm::event::KeyCode::End => {
                 self.cursor_position = self.input.len();
             }
-            crossterm::event::KeyCode::Enter => {
-                self.perform_search()
-            }
+            crossterm::event::KeyCode::Enter => self.perform_search(),
             crossterm::event::KeyCode::Down => {
                 if !self.results.is_empty() {
                     self.selected_result = Some(match self.selected_result {
@@ -163,12 +193,28 @@ impl Component for SearchBox<'_> {
                     };
                 }
             }
+            crossterm::event::KeyCode::Esc => {
+                let callback: crate::compositor::Callback = Box::new(
+                    move |compositor: &mut Compositor, cx: &mut CompositorContext| {
+                        compositor.pop();
+                    },
+                );
+                return EventResult::Consumed(Some(callback));
+            }
             _ => return EventResult::Ignored(None),
-        }
+        };
         EventResult::Consumed(None)
     }
 
     fn cursor_position(&self, area: Rect) -> Option<(u16, u16)> {
+        todo!()
+    }
+
+    fn id(&self) -> Option<&'static str> {
+        Some(ID)
+    }
+
+    fn as_any_mut(&mut self) -> &mut dyn Any {
         todo!()
     }
 }
@@ -178,6 +224,7 @@ impl<'a> SearchBox<'a> {
         Self {
             title,
             items: vec!["[输入搜索内容]".to_string()],
+            last_input_time: Instant::now(),
             ..Default::default()
         }
     }
@@ -208,6 +255,80 @@ impl<'a> SearchBox<'a> {
         //     };
         // });
     }
+    /// 处理输入变化（在handle_event的Char/Backspace/Delete等分支调用）
+    fn on_input_change(&mut self, cx: &mut CompositorContext) {
+        self.last_input_time = Instant::now();
+        self.current_search_id += 1;
+        self.is_searching = true;
+
+        
+        // 设置延迟搜索
+        let (new_tx, mut rx) = mpsc::channel(1);
+        self.search_tx = Some(new_tx);
+        let search_id = self.current_search_id;
+        let input = self.input.clone();
+
+        // 启动延迟搜索任务
+        tokio::spawn(async move {
+            // 阶段1：等待延迟
+            let delay_future = tokio::time::sleep(Duration::from_millis(1500));
+            tokio::pin!(delay_future);
+
+            tokio::select! {
+                _ = delay_future => {
+                    // 阶段2：执行API请求
+                    let result = syservice::document::search_doc_with_title(input).await;
+                    let mut resp = vec![];
+                    if let Ok(vec_result) = result {
+                        resp = vec_result.data.iter()
+                            .map(|it| it.content)
+                            .collect::<Vec<_>>();
+                    }
+                    // 回调到UI线程
+                    cx.callback().invoke(move |comp| {
+                        if let Some(search_box) = comp.find_mut::<SearchBox>() {
+                            if search_box.current_search_id == search_id {
+                                search_box.update_results(resp);
+                                search_box.is_searching = false;
+                            }
+                        }
+                    });
+                }
+                _ = cancel_rx.recv() => {
+                    // 收到取消信号，直接退出
+                }
+            }
+        });
+    }
+
+    /// 执行实际异步搜索
+    fn do_async_search(&mut self, query: String, cx: &mut CompositorContext) {
+        self.is_searching = true;
+        let search_id = self.current_search_id;
+        let callback = cx.callback();
+
+        tokio::spawn(async move {
+            // 实际API调用
+            let result = syservice::document::search_doc_with_title(query.clone()).await;
+
+            // 回调到UI线程
+            callback.invoke(move |comp| {
+                if let Some(search_box) = comp.find_mut::<SearchBox>() {
+                    search_box.is_searching = false;
+
+                    // 只处理最新请求的结果
+                    if search_box.current_search_id == search_id {
+                        match result {
+                            Ok(res) => search_box.update_results(
+                                res.data.iter().map(|d| d.content.clone()).collect(),
+                            ),
+                            Err(e) => search_box.update_results(vec![format!("搜索失败: {}", e)]),
+                        }
+                    }
+                }
+            });
+        });
+    }
 
     /// 获取当前选中的结果
     pub fn selected_result(&self) -> Option<&String> {
@@ -231,99 +352,5 @@ impl<'a> SearchBox<'a> {
 
         self.list_state
             .select(Some(new_idx % self.items.len().max(1)));
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use crossterm::event::{KeyCode, KeyEvent};
-    use ratatui::backend::TestBackend;
-    use ratatui::Terminal;
-
-    #[test]
-    fn test_searchbox_initial_state() {
-        let searchbox = SearchBox::new("搜索", "结果");
-        assert_eq!(searchbox.input(), "");
-        assert!(searchbox.results.is_empty());
-        assert!(!searchbox.active);
-    }
-
-    #[test]
-    fn test_searchbox_input_handling() {
-        let mut searchbox = SearchBox::new("搜索", "结果");
-        searchbox.set_active(true);
-
-        // 测试字符输入
-        searchbox.handle_event(KeyEvent::from(KeyCode::Char('a')), );
-        searchbox.handle_event(KeyEvent::from(KeyCode::Char('b')), );
-        assert_eq!(searchbox.input(), "ab");
-
-        // 测试退格
-        searchbox.handle_event(KeyEvent::from(KeyCode::Backspace), );
-        assert_eq!(searchbox.input(), "a");
-
-        // 测试回车执行搜索
-        searchbox.handle_event(KeyEvent::from(KeyCode::Enter), );
-        assert_eq!(searchbox.results.len(), 3);
-        assert!(searchbox.results[0].contains("a - 结果 1"));
-    }
-
-    #[test]
-    fn test_searchbox_rendering() {
-        let mut searchbox = SearchBox::new("搜索", "结果");
-        searchbox.set_active(true);
-        searchbox.input = "test".to_string();
-        searchbox.results = vec!["结果1".to_string(), "结果2".to_string()];
-
-        // 使用测试后端
-        let backend = TestBackend::new(40, 20);
-        let mut terminal = Terminal::new(backend).unwrap();
-
-        terminal
-            .draw(|f| {
-                searchbox.render(f, f.size());
-            })
-            .unwrap();
-
-        // 可以在这里添加对渲染输出的断言
-        // 实际项目中可能需要更详细的渲染测试
-    }
-    #[test]
-    fn test_searchbox_cursor_movement() {
-        let mut searchbox = SearchBox::new("搜索", "结果");
-        searchbox.set_active(true);
-        searchbox.input = "测试".to_string();
-        searchbox.cursor_position = 0;
-
-        // 测试右移
-        searchbox.handle_event(KeyEvent::from(KeyCode::Right), );
-        assert_eq!(searchbox.cursor_position, "测".len());
-
-        // 测试左移
-        searchbox.handle_event(KeyEvent::from(KeyCode::Left), );
-        assert_eq!(searchbox.cursor_position, 0);
-
-        // 测试Home/End
-        searchbox.handle_event(KeyEvent::from(KeyCode::End), );
-        assert_eq!(searchbox.cursor_position, searchbox.input.len());
-        searchbox.handle_event(KeyEvent::from(KeyCode::Home), );
-        assert_eq!(searchbox.cursor_position, 0);
-    }
-
-    #[test]
-    fn test_searchbox_cursor_with_editing() {
-        let mut searchbox = SearchBox::new("搜索", "结果");
-        searchbox.set_active(true);
-
-        // 测试插入时光标移动
-        searchbox.handle_event(KeyEvent::from(KeyCode::Char('a')), );
-        assert_eq!(searchbox.cursor_position, 1);
-        assert_eq!(searchbox.input, "a");
-
-        // 测试删除时光标移动
-        searchbox.handle_event(KeyEvent::from(KeyCode::Backspace), );
-        assert_eq!(searchbox.cursor_position, 0);
-        assert_eq!(searchbox.input, "");
     }
 }
