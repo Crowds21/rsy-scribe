@@ -6,10 +6,7 @@ use crate::uiconfig::theme::Theme;
 use crossterm::event::{Event, KeyEvent, KeyEventKind};
 use ratatui::{
     prelude::*,
-    style::{Modifier, Style},
-    widgets::*,
 };
-use tokio::sync::mpsc;
 
 /// 回调
 pub type Callback = Box<dyn FnOnce(&mut Compositor, &mut CompositorContext)>;
@@ -29,14 +26,7 @@ pub struct Compositor {
 /// 全局状态管理
 pub struct CompositorContext {
     theme: Theme,
-    pub callback_sender: mpsc::UnboundedSender<EditorCompositorCallback>,
-    pub callback_receiver: mpsc::UnboundedReceiver<EditorCompositorCallback>,
 }
-
-pub struct CallbackHandle {
-    sender: mpsc::UnboundedSender<EditorCompositorCallback>,
-}
-
 
 impl Compositor {
     pub fn new() -> Compositor {
@@ -47,12 +37,14 @@ impl Compositor {
 
         }
     }
+    /// UI 组合器从下往上逐层绘制组件
     pub fn render(&mut self, frame: &mut Frame, surface: Rect) {
         for layer in &mut self.layers {
             layer.render(frame, surface);
         }
     }
 
+    /// 传递事件. 顶层组件未处理的事件会传向下一层.
     pub fn handle_event(&mut self, event: KeyEvent, cx: &mut CompositorContext) -> bool {
         let mut callbacks = Vec::new();
         for layer in self.layers.iter_mut().rev() {
@@ -88,10 +80,7 @@ impl Compositor {
     }
 
     pub fn find_mut(&mut self,id: Option<&'static str>) -> Option<&mut dyn Component> {
-        self.layers
-            .iter_mut()
-            .find(|layer| layer.id() == id)
-            .and_then(|component| component.as_any_mut().downcast_mut::<T>())
+       todo!() 
     }
 
 
@@ -99,26 +88,8 @@ impl Compositor {
 
 impl CompositorContext {
     pub fn new() -> Self {
-        let (tx, rx) = mpsc::unbounded_channel();
         Self {
             theme: Theme::default(),
-            callback_sender: tx,
-            callback_receiver: rx,
         }
-    }
-    /// 获取回调处理器（供组件使用）
-    pub fn callback(&self) -> CallbackHandle {
-        CallbackHandle {
-            sender: self.callback_sender.clone(),
-        }
-    }
-}
-
-impl CallbackHandle {
-    pub fn invoke<F>(self, f: F)
-    where
-        F: FnOnce(&mut Compositor) + Send + 'static,
-    {
-        let _ = self.sender.send(Box::new(f));
     }
 }

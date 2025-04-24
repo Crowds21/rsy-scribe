@@ -1,5 +1,7 @@
 use super::*;
 use crate::compositor::{Compositor, CompositorContext, EventResult};
+use crate::job;
+use crate::job::dispatch;
 use crossterm::event::KeyEvent;
 use ratatui::{
     prelude::*,
@@ -14,7 +16,7 @@ use unicode_width::UnicodeWidthStr;
 pub const ID: &str = "search-box";
 /// 可搜索的文本框组件
 #[derive(Debug)]
-pub struct SearchBox<'a> {
+pub struct SearchBox {
     cursor_position: usize,
     /// 当前输入内容
     input: String,
@@ -28,8 +30,7 @@ pub struct SearchBox<'a> {
     /// 是否处于活跃状态(接收输入)
     active: bool,
     /// 输入框标题
-    title: &'a str,
-    block: Block<'a>,
+    title: String,
 
     pub width: u16,
     pub height: u16,
@@ -38,7 +39,7 @@ pub struct SearchBox<'a> {
     current_search_id: u64,                  // 用于标识当前搜索请求
     is_searching: bool,
 }
-impl<'a> Default for SearchBox<'a> {
+impl<'a> Default for SearchBox {
     fn default() -> Self {
         Self {
             cursor_position: 0,
@@ -48,8 +49,7 @@ impl<'a> Default for SearchBox<'a> {
             list_state: ListState::default(),
             selected_result: None,
             active: false,
-            title: "Search",
-            block: Block::default(),
+            title: "Search".to_string(),
             width: 0,
             height: 0,
             last_input_time: Instant::now(),
@@ -59,7 +59,7 @@ impl<'a> Default for SearchBox<'a> {
         }
     }
 }
-impl Component for SearchBox<'_> {
+impl Component for SearchBox {
     fn render(&mut self, frame: &mut Frame, area: Rect) {
         let inner_area = Rect {
             x: area.x + 5,
@@ -76,7 +76,7 @@ impl Component for SearchBox<'_> {
 
         // 渲染输入框
         let input_block = Block::default()
-            .title(self.title)
+            .title(self.title.clone())
             .borders(Borders::ALL)
             .border_style(if self.active {
                 Style::default().fg(Color::Yellow)
@@ -91,7 +91,6 @@ impl Component for SearchBox<'_> {
             .block(input_block)
             .style(Style::default().fg(Color::White))
             .scroll((0, 0)); // 添加滚动支持
-
         frame.render_widget(input, chunks[0]);
 
         // 渲染光标
@@ -175,7 +174,22 @@ impl Component for SearchBox<'_> {
             crossterm::event::KeyCode::End => {
                 self.cursor_position = self.input.len();
             }
-            crossterm::event::KeyCode::Enter => self.perform_search(),
+            crossterm::event::KeyCode::Enter => {
+                tokio::spawn(async {
+                    let sy_blocks= syservice::document::search_doc_with_title("Rust".to_string())
+                        .await
+                        .expect("TODO: panic message")
+                        .data;
+                    // spawn本身只是一个普通的表达式.
+                    // 而 .await 的使用必须位于一个 async 块中
+                    dispatch(|compositor: &mut Compositor| {
+                        self.results = sy_blocks.iter().map(move |it| {
+                            it.content
+                        }).collect();
+                    })
+                    .await
+                });
+            }
             crossterm::event::KeyCode::Down => {
                 if !self.results.is_empty() {
                     self.selected_result = Some(match self.selected_result {
@@ -205,22 +219,14 @@ impl Component for SearchBox<'_> {
         };
         EventResult::Consumed(None)
     }
-
-    fn cursor_position(&self, area: Rect) -> Option<(u16, u16)> {
-        todo!()
-    }
-
     fn id(&self) -> Option<&'static str> {
         Some(ID)
     }
-
-    fn as_any_mut(&mut self) -> &mut dyn Any {
-        todo!()
-    }
 }
-impl<'a> SearchBox<'a> {
+impl<'a> SearchBox {
     /// 创建新的SearchBox
     pub fn new(title: &'a str, results_title: &'a str) -> Self {
+        let title = title.to_string();
         Self {
             title,
             items: vec!["[输入搜索内容]".to_string()],
@@ -261,7 +267,6 @@ impl<'a> SearchBox<'a> {
         self.current_search_id += 1;
         self.is_searching = true;
 
-        
         // 设置延迟搜索
         let (new_tx, mut rx) = mpsc::channel(1);
         self.search_tx = Some(new_tx);
@@ -274,61 +279,56 @@ impl<'a> SearchBox<'a> {
             let delay_future = tokio::time::sleep(Duration::from_millis(1500));
             tokio::pin!(delay_future);
 
-            tokio::select! {
-                _ = delay_future => {
-                    // 阶段2：执行API请求
-                    let result = syservice::document::search_doc_with_title(input).await;
-                    let mut resp = vec![];
-                    if let Ok(vec_result) = result {
-                        resp = vec_result.data.iter()
-                            .map(|it| it.content)
-                            .collect::<Vec<_>>();
-                    }
-                    // 回调到UI线程
-                    cx.callback().invoke(move |comp| {
-                        if let Some(search_box) = comp.find_mut::<SearchBox>() {
-                            if search_box.current_search_id == search_id {
-                                search_box.update_results(resp);
-                                search_box.is_searching = false;
-                            }
-                        }
-                    });
-                }
-                _ = cancel_rx.recv() => {
-                    // 收到取消信号，直接退出
-                }
-            }
+            // tokio::select! {
+            //     _ = delay_future => {
+            //         // 阶段2：执行API请求
+            //         let result = syservice::document::search_doc_with_title(input).await;
+            //         let mut resp = vec![];
+            //         if let Ok(vec_result) = result {
+            //             resp = vec_result.data.iter()
+            //                 .map(|it| it.content)
+            //                 .collect::<Vec<_>>();
+            //         }
+            //         // 回调到UI线程
+            //         cx.callback().invoke(move |comp| {
+            //             // updateResult
+            //         });
+            //     }
+            //     _  => {
+            //         // 收到取消信号，直接退出
+            //     }
+            // }
         });
     }
 
     /// 执行实际异步搜索
-    fn do_async_search(&mut self, query: String, cx: &mut CompositorContext) {
-        self.is_searching = true;
-        let search_id = self.current_search_id;
-        let callback = cx.callback();
-
-        tokio::spawn(async move {
-            // 实际API调用
-            let result = syservice::document::search_doc_with_title(query.clone()).await;
-
-            // 回调到UI线程
-            callback.invoke(move |comp| {
-                if let Some(search_box) = comp.find_mut::<SearchBox>() {
-                    search_box.is_searching = false;
-
-                    // 只处理最新请求的结果
-                    if search_box.current_search_id == search_id {
-                        match result {
-                            Ok(res) => search_box.update_results(
-                                res.data.iter().map(|d| d.content.clone()).collect(),
-                            ),
-                            Err(e) => search_box.update_results(vec![format!("搜索失败: {}", e)]),
-                        }
-                    }
-                }
-            });
-        });
-    }
+    // fn do_async_search(&mut self, query: String, cx: &mut CompositorContext) {
+    //     self.is_searching = true;
+    //     let search_id = self.current_search_id;
+    //     let callback = cx.callback();
+    //
+    //     tokio::spawn(async move {
+    //         // 实际API调用
+    //         let result = syservice::document::search_doc_with_title(query.clone()).await;
+    //
+    //         // 回调到UI线程
+    //         callback.invoke(move |comp| {
+    //             if let Some(search_box) = comp.find_mut::<SearchBox>() {
+    //                 search_box.is_searching = false;
+    //
+    //                 // 只处理最新请求的结果
+    //                 if search_box.current_search_id == search_id {
+    //                     match result {
+    //                         Ok(res) => search_box.update_results(
+    //                             res.data.iter().map(|d| d.content.clone()).collect(),
+    //                         ),
+    //                         Err(e) => search_box.update_results(vec![format!("搜索失败: {}", e)]),
+    //                     }
+    //                 }
+    //             }
+    //         });
+    //     });
+    // }
 
     /// 获取当前选中的结果
     pub fn selected_result(&self) -> Option<&String> {
