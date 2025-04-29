@@ -1,7 +1,8 @@
-use std::ops::Deref;
+use std::future::Future;
 use crate::compositor::Compositor;
-use std::sync::OnceLock;
 use once_cell::sync::OnceCell;
+use std::ops::Deref;
+use std::sync::OnceLock;
 use tokio::sync::mpsc::{self, Receiver, Sender};
 
 type Callback = Box<dyn FnOnce(&mut Compositor) + Send + 'static>;
@@ -13,14 +14,24 @@ pub struct JobQueue {
 }
 
 impl JobQueue {
-    pub fn handle_callback(&self, compositor: &mut Compositor, callback: Callback) {
-        todo!()
+    pub fn handle_callback(
+        &self,
+        compositor: &mut Compositor,
+        call: anyhow::Result<Option<Callback>>,
+    ) {
+        match call {
+            Ok(None) => {}
+            Ok(Some(call)) => call(compositor),
+            Err(e) => {
+                
+            }
+        }
     }
 
     pub fn new() -> Self {
         static INSTANCE: OnceLock<JobQueue> = OnceLock::new();
         let (tx, rx) = mpsc::channel(1024);
-        let _ = JOB_QUEUE.set(tx); 
+        let _ = JOB_QUEUE.set(tx);
         Self { callbacks: rx }
     }
 
@@ -37,20 +48,18 @@ impl JobQueue {
 
 pub(crate) static JOB_QUEUE: RunTimeLocal<OnceCell<Sender<Callback>>> = {
     RunTimeLocal {
-        __data: (OnceCell::new())
+        __data: (OnceCell::new()),
     }
 };
 
-
-pub async fn dispatch(job: impl FnOnce( &mut Compositor) + Send + 'static) {
-    let _ = JOB_QUEUE
-        .wait()
-        .send(Box::new(job))
-        .await;
+pub async fn dispatch(job: impl FnOnce(&mut Compositor) + Send + 'static) {
+    let _ = JOB_QUEUE.wait().send(Box::new(job)).await;
+}
+pub async fn dispatch_(job: impl FnOnce(&mut Compositor) + 'static) {
+    
 }
 
-
-/// 
+///
 // pub fn dispatch_blocking(job: impl FnOnce(&mut Compositor) + Send + 'static) {
 //     let jobs = JOB_QUEUE
 //         .wait().blocking_send(Box::new(job));

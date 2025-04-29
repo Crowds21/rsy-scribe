@@ -1,6 +1,7 @@
+mod search_box_debounce;
+
 use super::*;
 use crate::compositor::{Compositor, CompositorContext, EventResult};
-use crate::job;
 use crate::job::dispatch;
 use crossterm::event::KeyEvent;
 use ratatui::{
@@ -8,10 +9,12 @@ use ratatui::{
     style::{Modifier, Style},
     widgets::*,
 };
+use tokio::sync::mpsc::Sender;
 use syservice;
-use tokio::sync::mpsc;
-use tokio::time::{sleep, Duration};
+use syservice::document;
 use unicode_width::UnicodeWidthStr;
+use crate::component::search_box::search_box_debounce::SearchBoxDebounce;
+use crate::debounce::{send_blocking, AsyncHook};
 
 pub const ID: &str = "search-box";
 /// 可搜索的文本框组件
@@ -34,13 +37,15 @@ pub struct SearchBox {
 
     pub width: u16,
     pub height: u16,
-    last_input_time: Instant,
-    search_tx: Option<mpsc::Sender<String>>, // 用于取消之前的搜索
-    current_search_id: u64,                  // 用于标识当前搜索请求
-    is_searching: bool,
+
+    /// 延时搜索
+    async_sender:Sender<String>, 
 }
 impl<'a> Default for SearchBox {
     fn default() -> Self {
+        
+        let search_debounce = SearchBoxDebounce::new();
+        let sender = search_debounce.spawn();
         Self {
             cursor_position: 0,
             input: String::new(),
@@ -52,10 +57,7 @@ impl<'a> Default for SearchBox {
             title: "Search".to_string(),
             width: 0,
             height: 0,
-            last_input_time: Instant::now(),
-            search_tx: None,
-            current_search_id: 0,
-            is_searching: false,
+            async_sender:sender
         }
     }
 }
@@ -123,30 +125,13 @@ impl Component for SearchBox {
     fn handle_event(&mut self, event: KeyEvent, context: &mut CompositorContext) -> EventResult {
         match event.code {
             crossterm::event::KeyCode::Char(c) => {
-                self.input.insert(self.cursor_position, c);
-                self.cursor_position += c.len_utf8();
-                // self.update_input_display();
+               self.handle_search_input(c)
             }
             crossterm::event::KeyCode::Backspace => {
-                if self.cursor_position > 0 {
-                    let prev_char_len = self.input[..self.cursor_position]
-                        .chars()
-                        .last()
-                        .unwrap()
-                        .len_utf8();
-                    self.input.remove(self.cursor_position - prev_char_len);
-                    self.cursor_position -= prev_char_len;
-                }
+                self.handle_delete_char()
             }
             crossterm::event::KeyCode::Delete => {
-                if self.cursor_position < self.input.len() {
-                    let next_char_len = self.input[self.cursor_position..]
-                        .chars()
-                        .next()
-                        .unwrap()
-                        .len_utf8();
-                    self.input.remove(self.cursor_position);
-                }
+                self.handle_delete_char()
             }
             crossterm::event::KeyCode::Left => {
                 if self.cursor_position > 0 {
@@ -157,6 +142,7 @@ impl Component for SearchBox {
                         .len_utf8();
                     self.cursor_position -= prev_char_len;
                 }
+                EventResult::Consumed(None)
             }
             crossterm::event::KeyCode::Right => {
                 if self.cursor_position < self.input.len() {
@@ -167,28 +153,14 @@ impl Component for SearchBox {
                         .len_utf8();
                     self.cursor_position += next_char_len;
                 }
-            }
-            crossterm::event::KeyCode::Home => {
-                self.cursor_position = 0;
+                EventResult::Consumed(None)
             }
             crossterm::event::KeyCode::End => {
                 self.cursor_position = self.input.len();
+                EventResult::Consumed(None)
             }
             crossterm::event::KeyCode::Enter => {
-                tokio::spawn(async {
-                    let sy_blocks= syservice::document::search_doc_with_title("Rust".to_string())
-                        .await
-                        .expect("TODO: panic message")
-                        .data;
-                    // spawn本身只是一个普通的表达式.
-                    // 而 .await 的使用必须位于一个 async 块中
-                    dispatch(|compositor: &mut Compositor| {
-                        self.results = sy_blocks.iter().map(move |it| {
-                            it.content
-                        }).collect();
-                    })
-                    .await
-                });
+                EventResult::Consumed(None)
             }
             crossterm::event::KeyCode::Down => {
                 if !self.results.is_empty() {
@@ -198,6 +170,8 @@ impl Component for SearchBox {
                         _ => self.results.len() - 1,
                     });
                 }
+
+                EventResult::Consumed(None)
             }
             crossterm::event::KeyCode::Up => {
                 if !self.results.is_empty() {
@@ -206,6 +180,7 @@ impl Component for SearchBox {
                         Some(i) => Some(i - 1),
                     };
                 }
+                EventResult::Consumed(None)
             }
             crossterm::event::KeyCode::Esc => {
                 let callback: crate::compositor::Callback = Box::new(
@@ -213,16 +188,16 @@ impl Component for SearchBox {
                         compositor.pop();
                     },
                 );
-                return EventResult::Consumed(Some(callback));
+                EventResult::Consumed(Some(callback))
             }
-            _ => return EventResult::Ignored(None),
-        };
-        EventResult::Consumed(None)
+            _ =>  EventResult::Ignored(None),
+        }
     }
     fn id(&self) -> Option<&'static str> {
         Some(ID)
     }
 }
+
 impl<'a> SearchBox {
     /// 创建新的SearchBox
     pub fn new(title: &'a str, results_title: &'a str) -> Self {
@@ -230,7 +205,6 @@ impl<'a> SearchBox {
         Self {
             title,
             items: vec!["[输入搜索内容]".to_string()],
-            last_input_time: Instant::now(),
             ..Default::default()
         }
     }
@@ -244,91 +218,6 @@ impl<'a> SearchBox {
     pub fn input(&self) -> &str {
         &self.input
     }
-
-    /// 执行搜索(模拟)
-    fn perform_search(&mut self) {
-        let input = self.input.clone();
-        let mut items = &self.items;
-        // 启动异步任务
-        // tokio::spawn(async move {
-        //     // 设置加载状态
-        //     let result = syservice::document::search_doc_with_title(input).await;
-        //
-        //     // 处理结果
-        //     self.items = match result {
-        //         Ok(res) => res.data.iter().map(|it| it.content.clone()).collect(),
-        //         Err(_) => vec!["搜索失败".to_string()],
-        //     };
-        // });
-    }
-    /// 处理输入变化（在handle_event的Char/Backspace/Delete等分支调用）
-    fn on_input_change(&mut self, cx: &mut CompositorContext) {
-        self.last_input_time = Instant::now();
-        self.current_search_id += 1;
-        self.is_searching = true;
-
-        // 设置延迟搜索
-        let (new_tx, mut rx) = mpsc::channel(1);
-        self.search_tx = Some(new_tx);
-        let search_id = self.current_search_id;
-        let input = self.input.clone();
-
-        // 启动延迟搜索任务
-        tokio::spawn(async move {
-            // 阶段1：等待延迟
-            let delay_future = tokio::time::sleep(Duration::from_millis(1500));
-            tokio::pin!(delay_future);
-
-            // tokio::select! {
-            //     _ = delay_future => {
-            //         // 阶段2：执行API请求
-            //         let result = syservice::document::search_doc_with_title(input).await;
-            //         let mut resp = vec![];
-            //         if let Ok(vec_result) = result {
-            //             resp = vec_result.data.iter()
-            //                 .map(|it| it.content)
-            //                 .collect::<Vec<_>>();
-            //         }
-            //         // 回调到UI线程
-            //         cx.callback().invoke(move |comp| {
-            //             // updateResult
-            //         });
-            //     }
-            //     _  => {
-            //         // 收到取消信号，直接退出
-            //     }
-            // }
-        });
-    }
-
-    /// 执行实际异步搜索
-    // fn do_async_search(&mut self, query: String, cx: &mut CompositorContext) {
-    //     self.is_searching = true;
-    //     let search_id = self.current_search_id;
-    //     let callback = cx.callback();
-    //
-    //     tokio::spawn(async move {
-    //         // 实际API调用
-    //         let result = syservice::document::search_doc_with_title(query.clone()).await;
-    //
-    //         // 回调到UI线程
-    //         callback.invoke(move |comp| {
-    //             if let Some(search_box) = comp.find_mut::<SearchBox>() {
-    //                 search_box.is_searching = false;
-    //
-    //                 // 只处理最新请求的结果
-    //                 if search_box.current_search_id == search_id {
-    //                     match result {
-    //                         Ok(res) => search_box.update_results(
-    //                             res.data.iter().map(|d| d.content.clone()).collect(),
-    //                         ),
-    //                         Err(e) => search_box.update_results(vec![format!("搜索失败: {}", e)]),
-    //                     }
-    //                 }
-    //             }
-    //         });
-    //     });
-    // }
 
     /// 获取当前选中的结果
     pub fn selected_result(&self) -> Option<&String> {
@@ -353,4 +242,29 @@ impl<'a> SearchBox {
         self.list_state
             .select(Some(new_idx % self.items.len().max(1)));
     }
+
+    /// 处理用户字符输入.
+    fn handle_search_input(&mut self, c:char) -> EventResult {
+        self.input.insert(self.cursor_position, c);
+        self.cursor_position += c.len_utf8();
+        send_blocking(&self.async_sender, self.input.clone());
+        
+        EventResult::Consumed(None)
+    }
+    
+    fn handle_delete_char(&mut self) -> EventResult {
+        if self.cursor_position > 0 {
+            let prev_char_len = self.input[..self.cursor_position]
+                .chars()
+                .last()
+                .unwrap()
+                .len_utf8();
+            self.input.remove(self.cursor_position - prev_char_len);
+            self.cursor_position -= prev_char_len;
+            send_blocking(&self.async_sender, self.input.clone());
+        }
+
+        EventResult::Consumed(None)
+    }
+
 }

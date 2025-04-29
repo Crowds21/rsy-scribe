@@ -4,9 +4,7 @@ use crate::component::component_editor::EditorView;
 use crate::component::Component;
 use crate::uiconfig::theme::Theme;
 use crossterm::event::{Event, KeyEvent, KeyEventKind};
-use ratatui::{
-    prelude::*,
-};
+use ratatui::prelude::*;
 
 /// 回调
 pub type Callback = Box<dyn FnOnce(&mut Compositor, &mut CompositorContext)>;
@@ -32,10 +30,7 @@ impl Compositor {
     pub fn new() -> Compositor {
         let editor: Box<dyn Component> = Box::new(EditorView::new());
         let layers = vec![editor];
-        Self {
-            layers,
-
-        }
+        Self { layers }
     }
     /// UI 组合器从下往上逐层绘制组件
     pub fn render(&mut self, frame: &mut Frame, surface: Rect) {
@@ -79,11 +74,13 @@ impl Compositor {
         self.layers.pop()
     }
 
-    pub fn find_mut(&mut self,id: Option<&'static str>) -> Option<&mut dyn Component> {
-       todo!() 
+    pub fn find<T: 'static>(&mut self) -> Option<&mut T> {
+        let type_name = std::any::type_name::<T>();
+        self.layers
+            .iter_mut()
+            .find(|component| component.type_name() == type_name)
+            .and_then(|component| component.as_any_mut().downcast_mut())
     }
-
-
 }
 
 impl CompositorContext {

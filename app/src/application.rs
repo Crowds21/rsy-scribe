@@ -1,3 +1,5 @@
+use crossterm::event::{KeyCode, KeyModifiers};
+use crossterm::terminal::{disable_raw_mode, LeaveAlternateScreen};
 use crossterm::{
     event::Event,
     execute,
@@ -15,9 +17,9 @@ pub struct Application {
     compositor_context: CompositorContext,
     pub jobs: JobQueue, // 引用全局 JobQueue
 }
-pub struct ApplicationState{
-    pub search_result:Vec<String>,
-    pub document:Vec<String>,
+pub struct ApplicationState {
+    pub search_result: Vec<String>,
+    pub document: Vec<String>,
 }
 impl Application {
     pub fn new() -> Self {
@@ -43,16 +45,20 @@ impl Application {
         // 主循环
         loop {
             self.render().await;
-            
+
             tokio::select! {
                 biased;
                 Some(Ok(event)) = input_stream.next() => {
                     if let Event::Key(key) = event {
+                        if key.modifiers == KeyModifiers::CONTROL && key.code == KeyCode::Char('c') {
+                            self.exit_app();
+                            break;
+                        }
                         self.compositor.handle_event(key.clone(), &mut self.compositor_context);
                     }
                 }
                 Some(callback) = self.jobs.callbacks.recv() => {
-                    self.jobs.handle_callback(&mut self.compositor, callback);
+                    self.jobs.handle_callback(&mut self.compositor, Ok(Some(callback)));
                     // self.render().await;
                 }
             }
@@ -67,5 +73,10 @@ impl Application {
                 self.compositor.render(f, f.size());
             })
             .expect("rendering error");
+    }
+
+    pub fn exit_app(&mut self) {
+        disable_raw_mode().expect("Disable raw mode before exit");
+        execute!(self.terminal.backend_mut(), LeaveAlternateScreen).unwrap();
     }
 }

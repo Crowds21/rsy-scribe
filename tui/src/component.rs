@@ -1,4 +1,4 @@
-pub mod component_search_box;
+pub mod search_box;
 pub mod component_editor;
 pub mod gutter;
 
@@ -25,6 +25,9 @@ pub trait Component: Any + AnyComponent{
 
     fn id(&self) -> Option<&'static str> {
         None
+    }
+    fn type_name(&self) -> &'static str {
+        std::any::type_name::<Self>()
     }
 }
 

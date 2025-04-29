@@ -1,6 +1,6 @@
 use crossterm::event::{KeyCode, KeyEvent};
 use crate::compositor::{Compositor, CompositorContext, EventResult};
-use crate::component::component_search_box::SearchBox;
+use crate::component::search_box::SearchBox;
 use super::*;
 use ratatui::{
     backend::CrosstermBackend,

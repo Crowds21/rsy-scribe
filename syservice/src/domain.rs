@@ -30,6 +30,32 @@ pub struct SyBlock {
     pub sort: i32,
     pub subtype: String,
     pub tag: String,
-    pub type_: String,
+    #[serde(rename = "type")]
+    pub block_type: String,
     pub updated: String,
+}
+
+pub enum SyBlockType{
+    Document,
+    // H1-H6
+    Title, 
+    // Order,Unordered,Task
+    List,
+    ListItem,
+    Quote,
+    SuperBlock,
+    Paragraph,
+    Code,
+    Method,
+    Table,
+    // 数据库块
+    DataBlock,
+    QueryEmbed,
+    Video,
+    Audio,
+    Widget,
+    IFrame,
+    Html,
+    // 分割线
+    Tb,
 }
