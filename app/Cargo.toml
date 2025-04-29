@@ -1,0 +1,15 @@
+[package]
+name = "app"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+categories.workspace = true
+repository.workspace = true
+
+[dependencies]
+tui = {path="../tui"}
+tokio = { version = "1.41.0", features = ["full"] }
+crossterm = { version = "0.27", features = ["event-stream"] }
+futures-util = { version = "0.3", features = ["std", "async-await"], default-features = false }
+ropey = "1.6.1"
+ratatui = "0.26"

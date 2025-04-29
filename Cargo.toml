@@ -1,0 +1,11 @@
+[workspace]
+members = ["app", "syservice", "tui", "view"]
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+authors = ["Crowds"]
+categories = ["editor"]
+repository = "https://github.com/Crowds21/rsy-scribe"
+
+[workspace.dependencies]
+thiserror = "1.0"

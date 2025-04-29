@@ -1,0 +1,16 @@
+[package]
+name = "syservice"
+version.workspace = true
+authors.workspace = true
+edition.workspace = true
+categories.workspace = true
+repository.workspace = true
+
+[dependencies]
+serde = { version = "1", features = ["derive"] }
+tokio = { version = "1.41.0", features = ["full"] }
+reqwest = { version = "0.12", features = ["json"] }
+tokio-stream = "0.1"
+futures-util = { version = "0.3", features = ["std", "async-await"], default-features = false }
+serde_json = "1.0.132"
+anyhow = "1"

@@ -1,0 +1,11 @@
+[package]
+name = "view"
+description = "UI abstractions for use in backends"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+categories.workspace = true
+repository.workspace = true
+
+[dependencies]
+slotmap="1.0.7"
