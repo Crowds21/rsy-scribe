@@ -2,8 +2,6 @@ use crate::component::search_box::SearchBox;
 use crate::compositor::Compositor;
 use crate::debounce::AsyncHook;
 use crate::job::dispatch;
-use std::future::Future;
-use std::sync::Arc;
 use std::time::Duration;
 use syservice::document;
 use tokio::task::JoinHandle;
@@ -34,7 +32,7 @@ impl AsyncHook for SearchBoxDebounce {
         &mut self,
         input: Self::Event,
         timeout: Option<tokio::time::Instant>,
-    ) -> Option<tokio::time::Instant> {
+    ) -> Option<Instant> {
         if self.last_query == *input {
             None
         } else {

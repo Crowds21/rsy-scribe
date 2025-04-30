@@ -8,7 +8,6 @@ use ratatui::prelude::*;
 
 /// 回调
 pub type Callback = Box<dyn FnOnce(&mut Compositor, &mut CompositorContext)>;
-
 pub type EditorCompositorCallback = Box<dyn FnOnce(&mut Compositor) + Send>;
 pub enum EventResult {
     /// 交由下一层 ui 处理
@@ -20,7 +19,6 @@ pub enum EventResult {
 pub struct Compositor {
     layers: Vec<Box<dyn Component>>,
 }
-
 /// 全局状态管理
 pub struct CompositorContext {
     theme: Theme,
