@@ -1,8 +1,9 @@
-"app.bg"={bg="bg"}
-"app.font"={fg="fg"}
+"editor.bg" = { bg = "bg" }
+"editor.font" = { fg = "fg" }
 
-"ui.gutter"={fg="bg",bg_scale= 1.5}
-"ui.bufferline" = {bg="blue",bg_scale=1.0}
+"ui.gutter" = { fg = "bg", bg_scale = 1.5 }
+"ui.gutter.DECOR" = { fg = "cyan" }
+"ui.bufferline" = { bg = "blue", bg_scale = 1.0 }
 [palette]
 bg = "#282c34"
 fg = "#abb2bf"
@@ -18,3 +19,4 @@ black = "#282c34"
 gray = "#5c6370"
 highlight = "#e2be7d"
 comment = "#7f848e"
+

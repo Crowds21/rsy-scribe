@@ -4,7 +4,7 @@ use ratatui::style::Color as RatColor;
 use ratatui::style::{Modifier, Style};
 use std::collections::HashMap;
 use std::str::FromStr;
-use toml::{ map::Map, Value};
+use toml::{map::Map, Value};
 
 pub static DEFAULT_THEME_DATA: Lazy<Value> = Lazy::new(|| {
     let bytes = include_bytes!("../../../theme.toml");
@@ -14,10 +14,27 @@ const PALETTE_NAME: &str = "palette";
 #[derive(Clone, Debug, Default)]
 pub struct Theme {
     // them name
-    name: String,
+    pub name: String,
     // UI styles are stored in a HashMap
-    styles: HashMap<String, Style>,
+    pub styles: HashMap<String, Style>,
     // tree-sitter highlight styles are stored in a Vec to optimize lookups
+}
+impl Theme {
+    pub fn name(&self) -> &str {
+        &self.name
+    }
+
+    pub fn get(&self, scope: &str) -> Style {
+        self.try_get(scope).unwrap_or_default()
+    }
+
+    /// Get the style of a scope, falling back to dot separated broader
+    /// scopes. For example if `ui.text.focus` is not defined in the theme,
+    /// `ui.text` is tried and then `ui` is tried.
+    pub fn try_get(&self, scope: &str) -> Option<Style> {
+        std::iter::successors(Some(scope), |s| Some(s.rsplit_once('.')?.0))
+            .find_map(|s| self.styles.get(s).copied())
+    }
 }
 #[derive(Debug, Clone)]
 pub struct ThemeColorItem {
@@ -174,10 +191,7 @@ fn parse_modifier(modifier: &str) -> Modifier {
     }
 }
 
-fn change_brightness(
-    color: &str,
-    amount: f32,
-) -> Result<Color, ratatui::style::ParseColorError> {
+fn change_brightness(color: &str, amount: f32) -> Result<Color, ratatui::style::ParseColorError> {
     // 解析基础颜色
     let base_color = csscolorparser::parse(color).map_err(|_| ratatui::style::ParseColorError)?;
 

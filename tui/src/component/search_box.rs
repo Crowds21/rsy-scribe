@@ -2,7 +2,6 @@ mod search_box_debounce;
 
 use super::*;
 use crate::compositor::{Compositor, CompositorContext, EventResult};
-use crate::job::dispatch;
 use crossterm::event::KeyEvent;
 use ratatui::{
     prelude::*,
@@ -11,7 +10,6 @@ use ratatui::{
 };
 use tokio::sync::mpsc::Sender;
 use syservice;
-use syservice::document;
 use unicode_width::UnicodeWidthStr;
 use crate::component::search_box::search_box_debounce::SearchBoxDebounce;
 use crate::debounce::{send_blocking, AsyncHook};
@@ -62,7 +60,7 @@ impl<'a> Default for SearchBox {
     }
 }
 impl Component for SearchBox {
-    fn render(&mut self, frame: &mut Frame, area: Rect) {
+    fn render(&mut self, frame: &mut Frame, area: Rect,cx: &mut CompositorContext) {
         let inner_area = Rect {
             x: area.x + 5,
             y: area.y + 5,
@@ -87,9 +85,9 @@ impl Component for SearchBox {
             });
 
         // 计算光标在屏幕上的位置
-        let cursor_x = self.input[..self.cursor_position].width() as u16 + 1;
-
-        let input = Paragraph::new(self.input.as_str())
+        let cursor_x = self.input[..self.cursor_position].width() as u16 + 4;
+        let block_content = " > ".to_owned() + self.input.as_str();
+        let input = Paragraph::new(block_content)
             .block(input_block)
             .style(Style::default().fg(Color::White))
             .scroll((0, 0)); // 添加滚动支持
@@ -113,10 +111,16 @@ impl Component for SearchBox {
         let list = List::new(items)
             .block(results_block)
             .highlight_style(Style::default().add_modifier(Modifier::BOLD))
-            .highlight_symbol(">> ");
+            .highlight_symbol(" > ");
 
-        if let Some(selected) = self.selected_result {
-            self.list_state.select(Some(selected));
+        match self.selected_result {
+            Some(selected) => {
+                self.list_state.select(Some(selected));
+            }
+            None => {
+                self.selected_result = Some(0);
+                self.list_state.select(Some(0)); 
+            }
         }
 
         frame.render_stateful_widget(list, chunks[1], &mut self.list_state);
@@ -134,7 +138,7 @@ impl Component for SearchBox {
                 self.handle_delete_char()
             }
             crossterm::event::KeyCode::Left => {
-                if self.cursor_position > 0 {
+                if self.cursor_position > 2 {
                     let prev_char_len = self.input[..self.cursor_position]
                         .chars()
                         .last()
@@ -165,7 +169,7 @@ impl Component for SearchBox {
             crossterm::event::KeyCode::Down => {
                 if !self.results.is_empty() {
                     self.selected_result = Some(match self.selected_result {
-                        Some(i) if i < self.results.len() - 1 => i + 1,
+                        Some(i) if i <= self.results.len() - 1 => i + 1,
                         None if !self.results.is_empty() => 0,
                         _ => self.results.len() - 1,
                     });
@@ -176,7 +180,7 @@ impl Component for SearchBox {
             crossterm::event::KeyCode::Up => {
                 if !self.results.is_empty() {
                     self.selected_result = match self.selected_result {
-                        Some(0) | None => None,
+                        Some(0) | None => Some(0),
                         Some(i) => Some(i - 1),
                     };
                 }

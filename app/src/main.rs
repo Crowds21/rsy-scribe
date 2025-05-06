@@ -1,11 +1,4 @@
-use crossterm::{
-    event::Event,
-    execute,
-    terminal::{enable_raw_mode, EnterAlternateScreen},
-};
-use ratatui::{backend::CrosstermBackend, Terminal};
-use std::{io, panic};
-use tui::compositor::{Compositor, CompositorContext};
+use std::{io};
 use crate::application::Application;
 
 mod application;

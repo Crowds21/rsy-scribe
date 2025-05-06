@@ -21,7 +21,7 @@ pub struct Compositor {
 }
 /// 全局状态管理
 pub struct CompositorContext {
-    theme: Theme,
+    pub theme: Theme,
 }
 
 impl Compositor {
@@ -31,9 +31,9 @@ impl Compositor {
         Self { layers }
     }
     /// UI 组合器从下往上逐层绘制组件
-    pub fn render(&mut self, frame: &mut Frame, surface: Rect) {
+    pub fn render(&mut self, frame: &mut Frame, surface: Rect, cx:&mut CompositorContext) {
         for layer in &mut self.layers {
-            layer.render(frame, surface);
+            layer.render(frame, surface,cx);
         }
     }
 

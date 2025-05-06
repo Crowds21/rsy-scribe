@@ -10,7 +10,7 @@ use ratatui::widgets::Paragraph;
 use crate::compositor::{Callback, CompositorContext, EventResult};
 
 pub trait Component: Any + AnyComponent{
-    fn render(&mut self, f: &mut Frame, area: Rect, );
+    fn render(&mut self, f: &mut Frame, area: Rect, cx: &mut CompositorContext);
     fn handle_event(&mut self, event: KeyEvent, context: &mut CompositorContext) -> EventResult{
         EventResult::Ignored(None)
     }

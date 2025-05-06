@@ -37,12 +37,13 @@ impl EditorView {
 }
 
 impl Component for EditorView {
-    fn render(&mut self, frame: &mut Frame, area: Rect) {
+    fn render(&mut self, frame: &mut Frame, area: Rect, cx:&mut CompositorContext) {
         let area = frame.size();
 
         // 1. 清空背景
+        let editor_bg = cx.theme.styles.get("editor.bg").unwrap();
         frame.render_widget(
-            Block::default().style(Style::default().bg(Color::DarkGray)),
+            Block::default().style(*editor_bg),
             area,
         );
 

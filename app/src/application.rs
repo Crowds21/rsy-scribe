@@ -70,7 +70,7 @@ impl Application {
         // self.terminal.draw(pos).unwrap();
         self.terminal
             .draw(|f| {
-                self.compositor.render(f, f.size());
+                self.compositor.render(f, f.size(), &mut self.compositor_context);
             })
             .expect("rendering error");
     }
