@@ -1,18 +1,18 @@
 mod search_box_debounce;
 
 use super::*;
+use crate::component::search_box::search_box_debounce::SearchBoxDebounce;
 use crate::compositor::{Compositor, CompositorContext, EventResult};
+use crate::debounce::{send_blocking, AsyncHook};
 use crossterm::event::KeyEvent;
 use ratatui::{
     prelude::*,
     style::{Modifier, Style},
     widgets::*,
 };
-use tokio::sync::mpsc::Sender;
 use syservice;
+use tokio::sync::mpsc::Sender;
 use unicode_width::UnicodeWidthStr;
-use crate::component::search_box::search_box_debounce::SearchBoxDebounce;
-use crate::debounce::{send_blocking, AsyncHook};
 
 pub const ID: &str = "search-box";
 /// 可搜索的文本框组件
@@ -25,11 +25,10 @@ pub struct SearchBox {
     items: Vec<String>,
     /// 搜索结果显示列表
     results: Vec<String>,
+    ids_for_docs: Vec<String>,
     /// Ratatui ui 状态
     list_state: ListState,
     selected_result: Option<usize>,
-    /// 是否处于活跃状态(接收输入)
-    active: bool,
     /// 输入框标题
     title: String,
 
@@ -37,30 +36,30 @@ pub struct SearchBox {
     pub height: u16,
 
     /// 延时搜索
-    async_sender:Sender<String>, 
+    async_sender: Sender<String>,
 }
 impl<'a> Default for SearchBox {
     fn default() -> Self {
-        
         let search_debounce = SearchBoxDebounce::new();
+        // TODO 在这里手动设置 debounce 中的异步逻辑
         let sender = search_debounce.spawn();
         Self {
             cursor_position: 0,
             input: String::new(),
             items: vec!["[输入搜索内容]".to_string()],
             results: vec![],
+            ids_for_docs: vec![],
             list_state: ListState::default(),
             selected_result: None,
-            active: false,
             title: "Search".to_string(),
             width: 0,
             height: 0,
-            async_sender:sender
+            async_sender: sender,
         }
     }
 }
 impl Component for SearchBox {
-    fn render(&mut self, frame: &mut Frame, area: Rect,cx: &mut CompositorContext) {
+    fn render(&mut self, frame: &mut Frame, area: Rect, cx: &mut CompositorContext) {
         let inner_area = Rect {
             x: area.x + 5,
             y: area.y + 5,
@@ -78,11 +77,7 @@ impl Component for SearchBox {
         let input_block = Block::default()
             .title(self.title.clone())
             .borders(Borders::ALL)
-            .border_style(if self.active {
-                Style::default().fg(Color::Yellow)
-            } else {
-                Style::default()
-            });
+            .border_style(Style::default());
 
         // 计算光标在屏幕上的位置
         let cursor_x = self.input[..self.cursor_position].width() as u16 + 4;
@@ -119,7 +114,7 @@ impl Component for SearchBox {
             }
             None => {
                 self.selected_result = Some(0);
-                self.list_state.select(Some(0)); 
+                self.list_state.select(Some(0));
             }
         }
 
@@ -128,15 +123,9 @@ impl Component for SearchBox {
 
     fn handle_event(&mut self, event: KeyEvent, context: &mut CompositorContext) -> EventResult {
         match event.code {
-            crossterm::event::KeyCode::Char(c) => {
-               self.handle_search_input(c)
-            }
-            crossterm::event::KeyCode::Backspace => {
-                self.handle_delete_char()
-            }
-            crossterm::event::KeyCode::Delete => {
-                self.handle_delete_char()
-            }
+            crossterm::event::KeyCode::Char(c) => self.handle_search_input(c),
+            crossterm::event::KeyCode::Backspace => self.handle_delete_char(),
+            crossterm::event::KeyCode::Delete => self.handle_delete_char(),
             crossterm::event::KeyCode::Left => {
                 if self.cursor_position > 2 {
                     let prev_char_len = self.input[..self.cursor_position]
@@ -163,9 +152,7 @@ impl Component for SearchBox {
                 self.cursor_position = self.input.len();
                 EventResult::Consumed(None)
             }
-            crossterm::event::KeyCode::Enter => {
-                EventResult::Consumed(None)
-            }
+            crossterm::event::KeyCode::Enter => EventResult::Consumed(None),
             crossterm::event::KeyCode::Down => {
                 if !self.results.is_empty() {
                     self.selected_result = Some(match self.selected_result {
@@ -194,7 +181,7 @@ impl Component for SearchBox {
                 );
                 EventResult::Consumed(Some(callback))
             }
-            _ =>  EventResult::Ignored(None),
+            _ => EventResult::Ignored(None),
         }
     }
     fn id(&self) -> Option<&'static str> {
@@ -212,12 +199,6 @@ impl<'a> SearchBox {
             ..Default::default()
         }
     }
-
-    /// 设置组件活跃状态
-    pub fn set_active(&mut self, active: bool) {
-        self.active = active;
-    }
-
     /// 获取当前输入内容
     pub fn input(&self) -> &str {
         &self.input
@@ -248,14 +229,14 @@ impl<'a> SearchBox {
     }
 
     /// 处理用户字符输入.
-    fn handle_search_input(&mut self, c:char) -> EventResult {
+    fn handle_search_input(&mut self, c: char) -> EventResult {
         self.input.insert(self.cursor_position, c);
         self.cursor_position += c.len_utf8();
         send_blocking(&self.async_sender, self.input.clone());
-        
+
         EventResult::Consumed(None)
     }
-    
+
     fn handle_delete_char(&mut self) -> EventResult {
         if self.cursor_position > 0 {
             let prev_char_len = self.input[..self.cursor_position]
@@ -270,5 +251,4 @@ impl<'a> SearchBox {
 
         EventResult::Consumed(None)
     }
-
 }

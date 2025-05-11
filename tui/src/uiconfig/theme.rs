@@ -1,5 +1,5 @@
 use once_cell::sync::Lazy;
-use ratatui::prelude::{Color as RaColor, Color};
+use ratatui::prelude::{Color};
 use ratatui::style::Color as RatColor;
 use ratatui::style::{Modifier, Style};
 use std::collections::HashMap;
