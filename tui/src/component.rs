@@ -1,5 +1,5 @@
 pub mod search_box;
-pub mod component_editor;
+pub mod editor;
 pub mod gutter;
 mod block;
 

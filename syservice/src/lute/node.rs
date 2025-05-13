@@ -12,6 +12,7 @@ use rand::Rng;
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
 use serde_bytes::ByteBuf;
+use strum::EnumString;
 
 // type NodeType = i32;
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -46,13 +47,14 @@ pub struct Node {
 
     #[serde(skip)]
     pub last_child: Option<Box<Node>>,
-    
+
     #[serde(rename="Children",default,skip_serializing_if = "Vec::is_empty")]
     pub children: Vec<Node>,
 
     #[serde(skip)]
     pub tokens: ByteBuf,
 
+    /// 通过该字段来获取 Type 类型
     #[serde(rename = "Type")]
     pub type_str: String,
 
@@ -215,6 +217,7 @@ pub struct ListData {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub tight: Option<bool>, // 是否紧凑模式
 
+    /// ASCII 下对应的值
     #[serde(rename = "BulletChar", skip_serializing_if = "Option::is_none")]
     pub bullet_char: Option<u8>, // 无序列表标识(*/-/+)
 
@@ -233,6 +236,7 @@ pub struct ListData {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub checked: Option<bool>, // 任务列表项是否勾选
 
+    /// Base64 下的 List 前缀标识
     #[serde(rename="Marker",skip_serializing_if = "Option::is_none")]
     pub marker: Option<ByteBuf>, // 列表标识符原始字节
 
@@ -298,197 +302,199 @@ pub fn is_node_id_pattern(s: &str) -> bool {
 
     true
 }
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize,Default)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize,Default,EnumString)]
 #[repr(i32)]
 #[serde(rename_all = "camelCase")]
+#[strum(serialize_all = "PascalCase")]
+#[strum(ascii_case_insensitive)]      
 pub enum NodeType {
     #[default]
     Default=-1,
     // CommonMark
-    Document = 0,
-    Paragraph = 1,
-    Heading = 2,
-    HeadingC8hMarker = 3,
-    ThematicBreak = 4,
-    Blockquote = 5,
-    BlockquoteMarker = 6,
-    List = 7,
-    ListItem = 8,
-    HtmlBlock = 9,
-    InlineHtml = 10,
-    CodeBlock = 11,
-    CodeBlockFenceOpenMarker = 12,
-    CodeBlockFenceCloseMarker = 13,
-    CodeBlockFenceInfoMarker = 14,
-    CodeBlockCode = 15,
-    Text = 16,
-    Emphasis = 17,
-    EmA6kOpenMarker = 18,
-    EmA6kCloseMarker = 19,
-    EmU8eOpenMarker = 20,
-    EmU8eCloseMarker = 21,
-    Strong = 22,
-    StrongA6kOpenMarker = 23,
-    StrongA6kCloseMarker = 24,
-    StrongU8eOpenMarker = 25,
-    StrongU8eCloseMarker = 26,
-    CodeSpan = 27,
-    CodeSpanOpenMarker = 28,
-    CodeSpanContent = 29,
-    CodeSpanCloseMarker = 30,
-    HardBreak = 31,
-    SoftBreak = 32,
-    Link = 33,
-    Image = 34,
-    Bang = 35,
-    OpenBracket = 36,
-    CloseBracket = 37,
-    OpenParen = 38,
-    CloseParen = 39,
-    LinkText = 40,
-    LinkDest = 41,
-    LinkTitle = 42,
-    LinkSpace = 43,
-    HtmlEntity = 44,
-    LinkRefDefBlock = 45,
-    LinkRefDef = 46,
-    Less = 47,
-    Greater = 48,
+    NodeDocument = 0,
+    NodeParagraph = 1,
+    NodeHeading = 2,
+    NodeHeadingC8hMarker = 3,
+    NodeThematicBreak = 4,
+    NodeBlockquote = 5,
+    NodeBlockquoteMarker = 6,
+    NodeList = 7,
+    NodeListItem = 8,
+    NodeHtmlBlock = 9,
+    NodeInlineHtml = 10,
+    NodeCodeBlock = 11,
+    NodeCodeBlockFenceOpenMarker = 12,
+    NodeCodeBlockFenceCloseMarker = 13,
+    NodeCodeBlockFenceInfoMarker = 14,
+    NodeCodeBlockCode = 15,
+    NodeText = 16,
+    NodeEmphasis = 17,
+    NodeEmA6kOpenMarker = 18,
+    NodeEmA6kCloseMarker = 19,
+    NodeEmU8eOpenMarker = 20,
+    NodeEmU8eCloseMarker = 21,
+    NodeStrong = 22,
+    NodeStrongA6kOpenMarker = 23,
+    NodeStrongA6kCloseMarker = 24,
+    NodeStrongU8eOpenMarker = 25,
+    NodeStrongU8eCloseMarker = 26,
+    NodeCodeSpan = 27,
+    NodeCodeSpanOpenMarker = 28,
+    NodeCodeSpanContent = 29,
+    NodeCodeSpanCloseMarker = 30,
+    NodeHardBreak = 31,
+    NodeSoftBreak = 32,
+    NodeLink = 33,
+    NodeImage = 34,
+    NodeBang = 35,
+    NodeOpenBracket = 36,
+    NodeCloseBracket = 37,
+    NodeOpenParen = 38,
+    NodeCloseParen = 39,
+    NodeLinkText = 40,
+    NodeLinkDest = 41,
+    NodeLinkTitle = 42,
+    NodeLinkSpace = 43,
+    NodeHtmlEntity = 44,
+    NodeLinkRefDefBlock = 45,
+    NodeLinkRefDef = 46,
+    NodeLess = 47,
+    NodeGreater = 48,
 
     // GFM (100-199)
-    TaskListItemMarker = 100,
-    Strikethrough = 101,
-    Strikethrough1OpenMarker = 102,
-    Strikethrough1CloseMarker = 103,
-    Strikethrough2OpenMarker = 104,
-    Strikethrough2CloseMarker = 105,
-    Table = 106,
-    TableHead = 107,
-    TableRow = 108,
-    TableCell = 109,
+    NodeTaskListItemMarker = 100,
+    NodeStrikethrough = 101,
+    NodeStrikethrough1OpenMarker = 102,
+    NodeStrikethrough1CloseMarker = 103,
+    NodeStrikethrough2OpenMarker = 104,
+    NodeStrikethrough2CloseMarker = 105,
+    NodeTable = 106,
+    NodeTableHead = 107,
+    NodeTableRow = 108,
+    NodeTableCell = 109,
 
     // Emoji (200-299)
-    Emoji = 200,
-    EmojiUnicode = 201,
-    EmojiImg = 202,
-    EmojiAlias = 203,
+    NodeEmoji = 200,
+    NodeEmojiUnicode = 201,
+    NodeEmojiImg = 202,
+    NodeEmojiAlias = 203,
 
     // Math (300-399)
-    MathBlock = 300,
-    MathBlockOpenMarker = 301,
-    MathBlockContent = 302,
-    MathBlockCloseMarker = 303,
-    InlineMath = 304,
-    InlineMathOpenMarker = 305,
-    InlineMathContent = 306,
-    InlineMathCloseMarker = 307,
+    NodeMathBlock = 300,
+    NodeMathBlockOpenMarker = 301,
+    NodeMathBlockContent = 302,
+    NodeMathBlockCloseMarker = 303,
+    NodeInlineMath = 304,
+    NodeInlineMathOpenMarker = 305,
+    NodeInlineMathContent = 306,
+    NodeInlineMathCloseMarker = 307,
 
     // Escape (400-404)
-    Backslash = 400,
-    BackslashContent = 401,
+    NodeBackslash = 400,
+    NodeBackslashContent = 401,
 
     // Vditor (405-409)
-    VditorCaret = 405,
+    NodeVditorCaret = 405,
 
     // Footnotes (410-414)
-    FootnotesDefBlock = 410,
-    FootnotesDef = 411,
-    FootnotesRef = 412,
+    NodeFootnotesDefBlock = 410,
+    NodeFootnotesDef = 411,
+    NodeFootnotesRef = 412,
 
     // TOC (415-419)
-    Toc = 415,
+    NodeToc = 415,
 
     // Heading ID (420-424)
-    HeadingId = 420,
+    NodeHeadingId = 420,
 
     // YAML Front Matter (425-429)
-    YamlFrontMatter = 425,
-    YamlFrontMatterOpenMarker = 426,
-    YamlFrontMatterContent = 427,
-    YamlFrontMatterCloseMarker = 428,
+    NodeYamlFrontMatter = 425,
+    NodeYamlFrontMatterOpenMarker = 426,
+    NodeYamlFrontMatterContent = 427,
+    NodeYamlFrontMatterCloseMarker = 428,
 
     // Block Reference (430-449)
-    BlockRef = 430,
-    BlockRefId = 431,
-    BlockRefSpace = 432,
-    BlockRefText = 433,
-    BlockRefDynamicText = 434,
+    NodeBlockRef = 430,
+    NodeBlockRefId = 431,
+    NodeBlockRefSpace = 432,
+    NodeBlockRefText = 433,
+    NodeBlockRefDynamicText = 434,
 
     // Mark (450-454)
-    Mark = 450,
-    Mark1OpenMarker = 451,
-    Mark1CloseMarker = 452,
-    Mark2OpenMarker = 453,
-    Mark2CloseMarker = 454,
+    NodeMark = 450,
+    NodeMark1OpenMarker = 451,
+    NodeMark1CloseMarker = 452,
+    NodeMark2OpenMarker = 453,
+    NodeMark2CloseMarker = 454,
 
     // Kramdown IAL (455-459)
-    KramdownBlockIal = 455,
-    KramdownSpanIal = 456,
+    NodeKramdownBlockIal = 455,
+    NodeKramdownSpanIal = 456,
 
     // Tag (460-464)
-    Tag = 460,
-    TagOpenMarker = 461,
-    TagCloseMarker = 462,
+    NodeTag = 460,
+    NodeTagOpenMarker = 461,
+    NodeTagCloseMarker = 462,
 
     // Block Query (465-474)
-    BlockQueryEmbed = 465,
-    OpenBrace = 466,
-    CloseBrace = 467,
-    BlockQueryEmbedScript = 468,
+    NodeBlockQueryEmbed = 465,
+    NodeOpenBrace = 466,
+    NodeCloseBrace = 467,
+    NodeBlockQueryEmbedScript = 468,
 
     // Super Block (475-484)
-    SuperBlock = 475,
-    SuperBlockOpenMarker = 476,
-    SuperBlockLayoutMarker = 477,
-    SuperBlockCloseMarker = 478,
+    NodeSuperBlock = 475,
+    NodeSuperBlockOpenMarker = 476,
+    NodeSuperBlockLayoutMarker = 477,
+    NodeSuperBlockCloseMarker = 478,
 
     // Sup/Sub (485-494)
-    Sup = 485,
-    SupOpenMarker = 486,
-    SupCloseMarker = 487,
-    Sub = 490,
-    SubOpenMarker = 491,
-    SubCloseMarker = 492,
+    NodeSup = 485,
+    NodeSupOpenMarker = 486,
+    NodeSupCloseMarker = 487,
+    NodeSub = 490,
+    NodeSubOpenMarker = 491,
+    NodeSubCloseMarker = 492,
 
     // Git Conflict (495-499)
-    GitConflict = 495,
-    GitConflictOpenMarker = 496,
-    GitConflictContent = 497,
-    GitConflictCloseMarker = 498,
+    NodeGitConflict = 495,
+    NodeGitConflictOpenMarker = 496,
+    NodeGitConflictContent = 497,
+    NodeGitConflictCloseMarker = 498,
 
     // Media (500-529)
-    IFrame = 500,
-    Audio = 505,
-    Video = 510,
-    Kbd = 515,
-    KbdOpenMarker = 516,
-    KbdCloseMarker = 517,
-    Underline = 520,
-    UnderlineOpenMarker = 521,
-    UnderlineCloseMarker = 522,
-    Br = 525,
-    TextMark = 530,
-    Widget = 535,
+    NodeIFrame = 500,
+    NodeAudio = 505,
+    NodeVideo = 510,
+    NodeKbd = 515,
+    NodeKbdOpenMarker = 516,
+    NodeKbdCloseMarker = 517,
+    NodeUnderline = 520,
+    NodeUnderlineOpenMarker = 521,
+    NodeUnderlineCloseMarker = 522,
+    NodeBr = 525,
+    NodeTextMark = 530,
+    NodeWidget = 535,
 
     // File Annotation (540-549)
-    FileAnnotationRef = 540,
-    FileAnnotationRefId = 541,
-    FileAnnotationRefSpace = 542,
-    FileAnnotationRefText = 543,
+    NodeFileAnnotationRef = 540,
+    NodeFileAnnotationRefId = 541,
+    NodeFileAnnotationRefSpace = 542,
+    NodeFileAnnotationRefText = 543,
 
     // Attribute View (550-559)
-    AttributeView = 550,
+    NodeAttributeView = 550,
 
     // Custom Block (560-569)
-    CustomBlock = 560,
+    NodeCustomBlock = 560,
 
     // HTML Tags (570-599)
-    HtmlTag = 570,
-    HtmlTagOpen = 571,
-    HtmlTagClose = 572,
+    NodeHtmlTag = 570,
+    NodeHtmlTagOpen = 571,
+    NodeHtmlTagClose = 572,
 
     // Max Value
-    MaxVal = 1024,
+    NodeMaxVal = 1024,
 }
 impl From<NodeType> for i32 {
     fn from(val: NodeType) -> Self {
@@ -502,26 +508,27 @@ impl Node {
             return "";
         }
         match self.node_type {
-            NodeType::TagOpenMarker | NodeType::TagCloseMarker => "#",
-            NodeType::EmA6kOpenMarker | NodeType::EmA6kCloseMarker => "*",
-            NodeType::EmU8eOpenMarker | NodeType::EmU8eCloseMarker => "_",
-            NodeType::StrongA6kOpenMarker | NodeType::StrongA6kCloseMarker => "**",
-            NodeType::StrongU8eOpenMarker | NodeType::StrongU8eCloseMarker => "__",
-            NodeType::Strikethrough2OpenMarker | NodeType::Strikethrough2CloseMarker => "~~",
-            NodeType::SupOpenMarker | NodeType::SupCloseMarker => "^",
-            NodeType::SubOpenMarker | NodeType::SubCloseMarker => "~",
-            NodeType::InlineMathOpenMarker | NodeType::InlineMathCloseMarker => "$",
-            NodeType::KbdOpenMarker => "<kbd>",
-            NodeType::KbdCloseMarker => "</kbd>",
-            NodeType::UnderlineOpenMarker => "<u>",
-            NodeType::UnderlineCloseMarker => "</u>",
-            NodeType::Mark2OpenMarker | NodeType::Mark2CloseMarker => "==",
-            NodeType::Bang => "!",
-            NodeType::OpenBracket => "[",
-            NodeType::CloseBracket => "]",
-            NodeType::OpenParen => "(",
-            NodeType::CloseParen => ")",
+            NodeType::NodeTagOpenMarker | NodeType::NodeTagCloseMarker => "#",
+            NodeType::NodeEmA6kOpenMarker | NodeType::NodeEmA6kCloseMarker => "*",
+            NodeType::NodeEmU8eOpenMarker | NodeType::NodeEmU8eCloseMarker => "_",
+            NodeType::NodeStrongA6kOpenMarker | NodeType::NodeStrongA6kCloseMarker => "**",
+            NodeType::NodeStrongU8eOpenMarker | NodeType::NodeStrongU8eCloseMarker => "__",
+            NodeType::NodeStrikethrough2OpenMarker | NodeType::NodeStrikethrough2CloseMarker => "~~",
+            NodeType::NodeSupOpenMarker | NodeType::NodeSupCloseMarker => "^",
+            NodeType::NodeSubOpenMarker | NodeType::NodeSubCloseMarker => "~",
+            NodeType::NodeInlineMathOpenMarker | NodeType::NodeInlineMathCloseMarker => "$",
+            NodeType::NodeKbdOpenMarker => "<kbd>",
+            NodeType::NodeKbdCloseMarker => "</kbd>",
+            NodeType::NodeUnderlineOpenMarker => "<u>",
+            NodeType::NodeUnderlineCloseMarker => "</u>",
+            NodeType::NodeMark2OpenMarker | NodeType::NodeMark2CloseMarker => "==",
+            NodeType::NodeBang => "!",
+            NodeType::NodeOpenBracket => "[",
+            NodeType::NodeCloseBracket => "]",
+            NodeType::NodeOpenParen => "(",
+            NodeType::NodeCloseParen => ")",
             _ => "",
         }
     }
+    
 }

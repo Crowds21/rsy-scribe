@@ -1,7 +1,7 @@
 pub mod document;
 pub mod domain;
 mod handler;
-mod lute;
+pub mod lute;
 mod file;
 
 static SIYUAN_BASE: &str = "http://127.0.0.1:6806";

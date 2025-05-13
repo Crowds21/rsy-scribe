@@ -5,27 +5,6 @@ use std::io;
 use std::path::{Path, PathBuf};
 use std::{fs::File, io::BufReader};
 
-/// 加载文件为字节数组
-pub fn load_file_bytes_sync(path: &Path) -> io::Result<Vec<u8>> {
-    // 验证路径
-    if !path.exists() {
-        return Err(io::Error::new(
-            io::ErrorKind::NotFound,
-            format!("Path not found: {}", path.display()),
-        ));
-    }
-
-    if !path.is_file() {
-        return Err(io::Error::new(
-            io::ErrorKind::InvalidInput,
-            format!("Not a file: {}", path.display()),
-        ));
-    }
-
-    // 直接读取为字节数组
-    fs::read(path)
-}
-
 fn load_json_node(file_path: &Path) -> Result<lute::node::Node> {
     // 打开文件并添加错误上下文
     let file = File::open(file_path)
@@ -50,15 +29,6 @@ fn load_json_node(file_path: &Path) -> Result<lute::node::Node> {
 mod tests {
     use super::*;
     use serde_json::json;
-    #[test]
-    fn test_load_file_bytes_sync() {
-        let note_dir = Path::new("/Users/crowds/Notes/SiYuanKnowledgeBase/data");
-        let doc_path =
-            Path::new("20230620162729-levf2as/20230629142416-fk29t9w/20230629142458-ffxtme3/20240107160843-8f02mqs.sy");
-        let path = note_dir.join(doc_path);
-        let json_data = load_file_bytes_sync(path.as_path()).unwrap();
-    }
-
     #[test]
     fn test_load_node() {
         let note_dir = Path::new("/Users/crowds/Notes/SiYuanKnowledgeBase/data");

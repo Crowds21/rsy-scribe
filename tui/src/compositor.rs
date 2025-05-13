@@ -1,6 +1,6 @@
 use std::any::Any;
 // 参考 Helix 实现的 UI 调度器
-use crate::component::component_editor::EditorView;
+use crate::component::editor::EditorView;
 use crate::component::Component;
 use crate::uiconfig::theme::Theme;
 use crossterm::event::{Event, KeyEvent, KeyEventKind};
@@ -22,6 +22,7 @@ pub struct Compositor {
 /// 全局状态管理
 pub struct CompositorContext {
     pub theme: Theme,
+    pub scroll: Option<usize>,
 }
 
 impl Compositor {
@@ -55,6 +56,7 @@ impl Compositor {
         }
         false
     }
+    /// 从顶层开始逐层尝试获取光标位置
     pub fn cursor_position(&self, area: Rect) -> Option<(u16, u16)> {
         for layer in self.layers.iter().rev() {
             if let Some(pos) = layer.cursor_position(area) {
@@ -85,6 +87,7 @@ impl CompositorContext {
     pub fn new() -> Self {
         Self {
             theme: Theme::default(),
+            scroll: None,
         }
     }
 }
