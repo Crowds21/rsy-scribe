@@ -1,4 +1,5 @@
-use ratatui::layout::Rect;
+use crate::component;
+use ratatui::layout::{Constraint, Direction, Layout, Rect};
 use ratatui::{
     style::{Modifier, Style},
     text::{Line, Span},
@@ -6,8 +7,24 @@ use ratatui::{
     Frame,
 };
 use std::str::FromStr;
+use unicode_width::UnicodeWidthStr;
 use syservice::lute::node::{Node, NodeType};
 
+fn render_title(root: &mut Node) -> Option<Paragraph> {
+    root.properties.as_ref().and_then(|map| {
+        // 获取title并构建Paragraph
+        map.get("title").map(|title| {
+            let content = Span::styled(title.trim(), Style::default().add_modifier(Modifier::BOLD));
+            let line = "═".repeat(title.width());
+            Paragraph::new(vec![
+                Line::from(line.clone()),
+                Line::from(vec![content]),
+                Line::from(line),
+            ])
+                .block(Block::default().borders(Borders::LEFT | Borders::RIGHT))
+        })
+    })
+}
 fn render_header(child: &mut Node) -> Paragraph<'static> {
     let text = child.children[0].data.clone().unwrap();
     let level = child.heading_level.unwrap();
@@ -15,7 +32,7 @@ fn render_header(child: &mut Node) -> Paragraph<'static> {
     match level {
         1 => {
             // H1: 双实线包围 + 上下双横线
-            let line = "═".repeat(text.len() + 2);
+            let line = "═".repeat(text.width());
             Paragraph::new(vec![
                 Line::from(line.clone()),
                 Line::from(vec![content]),
@@ -40,13 +57,24 @@ fn render_header(child: &mut Node) -> Paragraph<'static> {
     }
 }
 
-fn render_document(node: &mut Node, frame: &mut Frame, content_area: Rect) {
+/// 渲染文档的统一入口
+pub fn render_document(node: &mut Node, frame: &mut Frame, content_area: Rect) {
     node.node_type = NodeType::from_str(&node.type_str).unwrap();
     if let NodeType::NodeDocument = node.node_type {
-        let document_header = render_header(node);
-        frame.render_widget(document_header, content_area);
+        let document_header = render_title(node);
+        let vertical_chunks = Layout::default()
+            .direction(Direction::Vertical)
+            .constraints([
+                Constraint::Length(3),
+                Constraint::Min(0), // 底部固定高度区域
+            ])
+            .split(content_area);
+        let rest_area = vertical_chunks[1];
+        if let Some(doc_title) = document_header {
+            frame.render_widget(doc_title, vertical_chunks[0]);
+        }
+        // render_children(node, frame, rest_area);
     }
-    render_children(node, frame);
 }
 fn render_node_text(data: String) -> Span<'static> {
     Span::from(data)
@@ -57,7 +85,7 @@ fn render_node_strong(data: String) -> Span<'static> {
     Span::styled(data, style)
 }
 
-fn render_children(node: &mut Node, frame: &mut Frame) {
+fn render_children(node: &mut Node, frame: &mut Frame, area: Rect) {
     node.node_type = NodeType::from_str(&node.type_str).unwrap();
     for child in &mut node.children {
         match child.node_type {

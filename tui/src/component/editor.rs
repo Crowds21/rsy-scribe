@@ -10,29 +10,28 @@ use ratatui::{
     widgets::{Block, Borders, Paragraph},
     Frame,
 };
-use std::cell::Cell;
+use syservice::lute::node::Node;
 
 pub const ID: &str = "editor-view";
 pub struct EditorView {
     cursor_position: Position,
-    gutter_area: Rect,
-    content_area: Rect,
-    documents: Vec<String>, // 模拟文档列表
-
+    pub gutter_area: Rect,
+    pub content_area: Rect,
+    pub document:Option<Node>,
     status_msg: Option<String>, // 状态消息
     count: Option<u32>,         // 模拟按键计数
+    /// 侧边栏
     gutter: GutterConfig,
 }
 impl EditorView {
     pub fn new() -> Self {
-        let documents = vec![String::from("Empty document")];
         let status_msg = Some("status".to_string());
         let count = None;
         Self {
             cursor_position: Position::default(),
             gutter_area: Rect::default(),
             content_area: Rect::default(),
-            documents,
+            document:None, 
             status_msg,
             count,
             gutter: GutterConfig::default(),
@@ -96,8 +95,8 @@ impl Component for EditorView {
         self.content_area = content_area;
         self.gutter_area = gutter_area;
 
-        // 渲染Gutter
-        let total_lines = self.documents.first().map_or(1, |d| d.lines().count());
+        // 计算文本行号,渲染Gutter
+        let total_lines = 3;
         render_gutter(frame, gutter_area, &self.gutter, total_lines);
 
         // Buffer line
@@ -111,11 +110,9 @@ impl Component for EditorView {
         frame.render_widget(bufferline, bufferline_area);
 
         // Editor
-        let temp_content = &String::new();
-        let doc_content = self.documents.first().unwrap_or(temp_content);
-        let editor =
-            Paragraph::new(doc_content.as_str()).block(Block::default().borders(Borders::NONE));
-        frame.render_widget(editor, content_area);
+        if let Some(node) = &mut self.document { 
+            block::doc::render_document(node,frame,content_area) 
+        }
 
         frame.set_cursor(
             content_area.x + self.cursor_position.x,

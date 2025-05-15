@@ -1,9 +1,11 @@
 mod search_box_debounce;
 
 use super::*;
+use crate::component::editor::EditorView;
 use crate::component::search_box::search_box_debounce::SearchBoxDebounce;
 use crate::compositor::{Compositor, CompositorContext, EventResult};
 use crate::debounce::{send_blocking, AsyncHook};
+use crate::job::dispatch;
 use crossterm::event::KeyEvent;
 use ratatui::{
     prelude::*,
@@ -21,11 +23,8 @@ pub struct SearchBox {
     cursor_position: usize,
     /// 当前输入内容
     input: String,
-    /// item[0]为输入内容, 其余为搜索结果
-    items: Vec<String>,
     /// 搜索结果显示列表
-    results: Vec<String>,
-    ids_for_docs: Vec<String>,
+    results: Vec<SearchResultItem>,
     /// Ratatui ui 状态
     list_state: ListState,
     selected_result: Option<usize>,
@@ -38,6 +37,15 @@ pub struct SearchBox {
     /// 延时搜索
     async_sender: Sender<String>,
 }
+/// 摘取SiYuan数据库字段
+#[derive(Debug)]
+struct SearchResultItem {
+    pub id: String,
+    pub box_id: String,
+    pub content: String,
+    pub path: String,
+    pub hpath: String,
+}
 impl<'a> Default for SearchBox {
     fn default() -> Self {
         let search_debounce = SearchBoxDebounce::new();
@@ -46,9 +54,7 @@ impl<'a> Default for SearchBox {
         Self {
             cursor_position: 0,
             input: String::new(),
-            items: vec!["[输入搜索内容]".to_string()],
             results: vec![],
-            ids_for_docs: vec![],
             list_state: ListState::default(),
             selected_result: None,
             title: "Search".to_string(),
@@ -100,7 +106,7 @@ impl Component for SearchBox {
         let items: Vec<ListItem> = self
             .results
             .iter()
-            .map(|r| ListItem::new(r.as_str()))
+            .map(|r| ListItem::new(r.hpath.as_str()))
             .collect();
 
         let list = List::new(items)
@@ -152,7 +158,7 @@ impl Component for SearchBox {
                 self.cursor_position = self.input.len();
                 EventResult::Consumed(None)
             }
-            crossterm::event::KeyCode::Enter => EventResult::Consumed(None),
+            crossterm::event::KeyCode::Enter => self.load_document(),
             crossterm::event::KeyCode::Down => {
                 if !self.results.is_empty() {
                     self.selected_result = Some(match self.selected_result {
@@ -195,7 +201,6 @@ impl<'a> SearchBox {
         let title = title.to_string();
         Self {
             title,
-            items: vec!["[输入搜索内容]".to_string()],
             ..Default::default()
         }
     }
@@ -206,28 +211,14 @@ impl<'a> SearchBox {
 
     /// 获取当前选中的结果
     pub fn selected_result(&self) -> Option<&String> {
-        self.selected_result.and_then(|i| self.results.get(i))
+        self.selected_result
+            .and_then(|i| self.results.get(i))
+            .map(|item| &item.hpath)
     }
-    pub fn update_results(&mut self, results: Vec<String>) {
-        self.items.truncate(1); // 保留输入框
-        self.items.extend(results);
-    }
-
     /// 清除选中状态
     pub fn clear_selection(&mut self) {
         self.selected_result = None;
     }
-    fn move_selection(&mut self, delta: i32) {
-        let new_idx = self
-            .list_state
-            .selected()
-            .map(|i| (i as i32 + delta).max(0) as usize)
-            .unwrap_or(0);
-
-        self.list_state
-            .select(Some(new_idx % self.items.len().max(1)));
-    }
-
     /// 处理用户字符输入.
     fn handle_search_input(&mut self, c: char) -> EventResult {
         self.input.insert(self.cursor_position, c);
@@ -249,6 +240,33 @@ impl<'a> SearchBox {
             send_blocking(&self.async_sender, self.input.clone());
         }
 
+        EventResult::Consumed(None)
+    }
+
+    fn load_document(&mut self) -> EventResult {
+        let doc_path = match self.selected_result.and_then(|idx| self.results.get(idx)) {
+            Some(doc_info) => format!("{}{}", doc_info.box_id, doc_info.path),
+            None => return EventResult::Consumed(None), // 提前返回避免无效spawn
+        };
+        tokio::spawn(async move {
+            let sy_nodes = syservice::file::load_json_node(&doc_path);
+            let open_document = move |compositor: &mut Compositor| {
+                let component = compositor.find::<EditorView>();
+                if let Some(editorView) = component {
+                    match sy_nodes {
+                        Ok(node) => {
+                            editorView.document = Some(node);
+                            compositor.pop();
+                            // TODO 这里还需要进行计算操作
+                            //  每个元素组件占据多少 offset.
+                            //  以便处理窗口滑动
+                        }
+                        Err(_) => editorView.document = None,
+                    }
+                }
+            };
+            dispatch(open_document).await
+        });
         EventResult::Consumed(None)
     }
 }

@@ -32,6 +32,8 @@ impl Compositor {
         Self { layers }
     }
     /// UI 组合器从下往上逐层绘制组件
+    /// TODO 如果事件被顶层 Layer 消费,
+    ///     并且不涉及异步更新 UI 的操作,就可以不重绘下层 UI
     pub fn render(&mut self, frame: &mut Frame, surface: Rect, cx:&mut CompositorContext) {
         for layer in &mut self.layers {
             layer.render(frame, surface,cx);

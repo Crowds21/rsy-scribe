@@ -12,6 +12,7 @@ pub struct SyBlock {
     /// 笔记本 id
     #[serde(rename = "box")]
     pub box_id : String,
+    /// 去除了Markdown标记后的文本内容
     pub content: String,
     #[serde(rename = "created")]
     pub created_at: String,

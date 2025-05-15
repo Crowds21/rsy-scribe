@@ -1,4 +1,4 @@
-use crate::component::search_box::SearchBox;
+use crate::component::search_box::{SearchBox, SearchResultItem};
 use crate::compositor::Compositor;
 use crate::debounce::AsyncHook;
 use crate::job::dispatch;
@@ -44,7 +44,7 @@ impl AsyncHook for SearchBoxDebounce {
     /// 防抖结束时,发起接口调用. 接口返回后返回 UI 更新.
     fn finish_debounce(&mut self) {
         let query = self.last_query.clone();
-        
+
         // TODO finish_debounce 的调用最好也是放入searchBox 中, debounce 本身
         //  只保留异步调用相关逻辑内容
         tokio::spawn(async move {
@@ -57,9 +57,12 @@ impl AsyncHook for SearchBoxDebounce {
                         search_box.results = resp
                             .data
                             .iter()
-                            .map(move |it| {
-                                let temp = it.hpath.clone();
-                                temp
+                            .map(move |it| SearchResultItem {
+                                id: it.id.clone(),
+                                box_id: it.box_id.clone(),
+                                content: it.content.clone(),
+                                path: it.path.clone(),
+                                hpath: it.hpath.clone(),
                             })
                             .collect();
                         search_box.selected_result = None;
