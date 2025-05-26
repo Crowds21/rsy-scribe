@@ -1,4 +1,5 @@
 use super::*;
+use crate::component::block::{doc, BlockComponent, RenderedBlock};
 use crate::component::gutter::{render_gutter, GutterConfig, GutterType};
 use crate::component::search_box::SearchBox;
 use crate::compositor::{Compositor, CompositorContext, EventResult};
@@ -6,32 +7,34 @@ use crossterm::event::{KeyCode, KeyEvent};
 use ratatui::layout::{Position, Size};
 use ratatui::{
     layout::{Constraint, Direction, Layout, Rect},
-    style::{Color, Modifier, Style},
+    style::{Color, Style},
     widgets::{Block, Borders, Paragraph},
     Frame,
 };
 use syservice::lute::node::Node;
 
 pub const ID: &str = "editor-view";
-pub struct EditorView {
+pub struct EditorView<'a> {
     cursor_position: Position,
     pub gutter_area: Rect,
     pub content_area: Rect,
-    pub document:Option<Node>,
+    pub document: Option<Node>,
+    pub doc_blocks: Vec<BlockComponent<'a>>,
     status_msg: Option<String>, // 状态消息
     count: Option<u32>,         // 模拟按键计数
     /// 侧边栏
     gutter: GutterConfig,
 }
-impl EditorView {
+impl<'a> EditorView<'a> {
     pub fn new() -> Self {
         let status_msg = Some("status".to_string());
         let count = None;
         Self {
             cursor_position: Position::default(),
+            doc_blocks: Vec::new(),
             gutter_area: Rect::default(),
             content_area: Rect::default(),
-            document:None, 
+            document: None,
             status_msg,
             count,
             gutter: GutterConfig::default(),
@@ -61,9 +64,34 @@ impl EditorView {
         self.cursor_position = new_pos;
         EventResult::Consumed(None)
     }
+
+    pub fn render_document(
+        &mut self,
+        frame: &mut Frame,
+        content_area: Rect,
+        cx: &mut CompositorContext,
+    ) {
+        let mut vec: Vec<RenderedBlock> = Vec::new();
+        if let Some(node) = &mut self.document {
+            vec = doc::create_document_blocks(node, cx);
+        }
+        // TODO render vc
+        let mut current_y = content_area.y;
+        let mut remaining_height = content_area.height;
+        for item in vec {
+            if remaining_height == 0 {
+                break; // 没有剩余空间时停止渲染
+            }
+
+            // current_y += render_height;
+            // remaining_height -= render_height;
+            // item.render(frame,re);
+            // let render_height = height.min(remaining_height);
+        }
+    }
 }
 
-impl Component for EditorView {
+impl Component for EditorView<'static> {
     fn render(&mut self, frame: &mut Frame, area: Rect, cx: &mut CompositorContext) {
         let area = frame.size();
 
@@ -110,9 +138,7 @@ impl Component for EditorView {
         frame.render_widget(bufferline, bufferline_area);
 
         // Editor
-        if let Some(node) = &mut self.document { 
-            block::doc::render_document(node,frame,content_area) 
-        }
+        self.render_document(frame, content_area, cx);
 
         frame.set_cursor(
             content_area.x + self.cursor_position.x,
@@ -142,7 +168,7 @@ impl Component for EditorView {
                 //  参考 compositor 中的 handle_event 函数
                 //  每一个组件实际上会返回一个 将 compositor 作为参数的函数.
                 //  然后这个函数在 Compositor.handle_event 中被执行
-                let callback: crate::compositor::Callback = Box::new(
+                let callback: Callback = Box::new(
                     move |compositor: &mut Compositor, cx: &mut CompositorContext| {
                         compositor.push(Box::new(search_box));
                     },

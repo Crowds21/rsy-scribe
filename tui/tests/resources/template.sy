@@ -1,0 +1,344 @@
+{
+	"ID": "20230620165438-1pqr39r",
+	"Spec": "1",
+	"Type": "NodeDocument",
+	"Properties": {
+		"id": "20230620165438-1pqr39r",
+		"scroll": "\u0026#123;\u0026quot;rootId\u0026quot;:\u0026quot;20230620165438-1pqr39r\u0026quot;,\u0026quot;startId\u0026quot;:\u0026quot;20231026101149-10uol14\u0026quot;,\u0026quot;endId\u0026quot;:\u0026quot;20231026101149-10uol14\u0026quot;,\u0026quot;scrollTop\u0026quot;:0,\u0026quot;focusId\u0026quot;:\u0026quot;20231026101149-10uol14\u0026quot;,\u0026quot;focusStart\u0026quot;:0,\u0026quot;focusEnd\u0026quot;:0\u0026#125;",
+		"title": "Draft",
+		"type": "doc",
+		"updated": "20250523153605"
+	},
+	"Children": [
+		{
+			"ID": "20250512161452-b4yltcf",
+			"Type": "NodeHeading",
+			"HeadingLevel": 2,
+			"Properties": {
+				"id": "20250512161452-b4yltcf",
+				"updated": "20250523153605"
+			},
+			"Children": [
+				{
+					"Type": "NodeText",
+					"Data": "Introduct"
+				}
+			]
+		},
+		{
+			"ID": "20231026101149-10uol14",
+			"Type": "NodeParagraph",
+			"Properties": {
+				"id": "20231026101149-10uol14",
+				"updated": "20250512161508"
+			},
+			"Children": [
+				{
+					"Type": "NodeText",
+					"Data": "This is a test file."
+				}
+			]
+		},
+		{
+			"ID": "20250512161441-kf86s1d",
+			"Type": "NodeList",
+			"ListData": {},
+			"Properties": {
+				"id": "20250512161441-kf86s1d",
+				"updated": "20250523153605"
+			},
+			"Children": [
+				{
+					"ID": "20250512161442-im7tv6x",
+					"Type": "NodeListItem",
+					"ListData": {
+						"BulletChar": 42,
+						"Marker": "Kg=="
+					},
+					"Properties": {
+						"id": "20250512161442-im7tv6x",
+						"updated": "20250523153605"
+					},
+					"Children": [
+						{
+							"ID": "20250512161442-nhz7wc2",
+							"Type": "NodeParagraph",
+							"Properties": {
+								"id": "20250512161442-nhz7wc2",
+								"updated": "20250523153417"
+							},
+							"Children": [
+								{
+									"Type": "NodeText",
+									"Data": "Parent1"
+								}
+							]
+						},
+						{
+							"ID": "20250512161443-xewqu8e",
+							"Type": "NodeList",
+							"ListData": {},
+							"Properties": {
+								"id": "20250512161443-xewqu8e",
+								"updated": "20250523153605"
+							},
+							"Children": [
+								{
+									"ID": "20250512161443-bqqlkhf",
+									"Type": "NodeListItem",
+									"ListData": {
+										"BulletChar": 42,
+										"Marker": "Kg=="
+									},
+									"Properties": {
+										"id": "20250512161443-bqqlkhf",
+										"updated": "20250523153605"
+									},
+									"Children": [
+										{
+											"ID": "20250512161443-hrmx31y",
+											"Type": "NodeParagraph",
+											"Properties": {
+												"id": "20250512161443-hrmx31y",
+												"updated": "20250523153605"
+											},
+											"Children": [
+												{
+													"Type": "NodeText",
+													"Data": "ListItem1 "
+												},
+												{
+													"Type": "NodeTextMark",
+													"TextMarkType": "code",
+													"TextMarkTextContent": "ListItem1-Span"
+												},
+												{
+													"Type": "NodeText",
+													"Data": "​"
+												}
+											]
+										}
+									]
+								},
+								{
+									"ID": "20250523153354-3z19fz1",
+									"Type": "NodeListItem",
+									"ListData": {
+										"BulletChar": 42,
+										"Marker": "Kg=="
+									},
+									"Properties": {
+										"id": "20250523153354-3z19fz1",
+										"updated": "20250523153359"
+									},
+									"Children": [
+										{
+											"ID": "20250523153354-sohxu5h",
+											"Type": "NodeParagraph",
+											"Properties": {
+												"id": "20250523153354-sohxu5h",
+												"updated": "20250523153359"
+											},
+											"Children": [
+												{
+													"Type": "NodeText",
+													"Data": "ListItem2"
+												}
+											]
+										}
+									]
+								},
+								{
+									"ID": "20250512161446-a3sbhzn",
+									"Type": "NodeListItem",
+									"ListData": {
+										"BulletChar": 42,
+										"Marker": "Kg=="
+									},
+									"Properties": {
+										"id": "20250512161446-a3sbhzn",
+										"updated": "20250523153424"
+									},
+									"Children": [
+										{
+											"ID": "20250512161446-0myty4k",
+											"Type": "NodeParagraph",
+											"Properties": {
+												"id": "20250512161446-0myty4k",
+												"updated": "20250523153424"
+											},
+											"Children": [
+												{
+													"Type": "NodeText",
+													"Data": "ListItem3"
+												}
+											]
+										}
+									]
+								}
+							]
+						}
+					]
+				},
+				{
+					"ID": "20250522101647-fmxv83j",
+					"Type": "NodeListItem",
+					"ListData": {
+						"BulletChar": 42,
+						"Marker": "Kg=="
+					},
+					"Properties": {
+						"id": "20250522101647-fmxv83j",
+						"updated": "20250523153414"
+					},
+					"Children": [
+						{
+							"ID": "20250522101647-ebouyqk",
+							"Type": "NodeParagraph",
+							"Properties": {
+								"id": "20250522101647-ebouyqk",
+								"updated": "20250523153414"
+							},
+							"Children": [
+								{
+									"Type": "NodeText",
+									"Data": "Parent2"
+								}
+							]
+						}
+					]
+				}
+			]
+		},
+		{
+			"ID": "20250512161448-3zuwx87",
+			"Type": "NodeParagraph",
+			"Properties": {
+				"id": "20250512161448-3zuwx87",
+				"updated": "20250512161448"
+			}
+		},
+		{
+			"ID": "20250512161513-8hypgbv",
+			"Type": "NodeParagraph",
+			"Properties": {
+				"id": "20250512161513-8hypgbv",
+				"updated": "20250512161607"
+			},
+			"Children": [
+				{
+					"Type": "NodeText",
+					"Data": "This is a line, with "
+				},
+				{
+					"Type": "NodeTextMark",
+					"TextMarkType": "strong",
+					"TextMarkTextContent": "Bold"
+				},
+				{
+					"Type": "NodeText",
+					"Data": " text; "
+				},
+				{
+					"Type": "NodeTextMark",
+					"TextMarkType": "em",
+					"TextMarkTextContent": "italic"
+				},
+				{
+					"Type": "NodeText",
+					"Data": " test; "
+				},
+				{
+					"Type": "NodeTextMark",
+					"TextMarkType": "mark",
+					"TextMarkTextContent": "highligh"
+				},
+				{
+					"Type": "NodeText",
+					"Data": " test"
+				}
+			]
+		},
+		{
+			"ID": "20250512161608-yijl8f6",
+			"Type": "NodeParagraph",
+			"Properties": {
+				"id": "20250512161608-yijl8f6",
+				"updated": "20250512161617"
+			},
+			"Children": [
+				{
+					"Type": "NodeText",
+					"Data": "This is a line, with "
+				},
+				{
+					"Type": "NodeTextMark",
+					"TextMarkType": "code",
+					"TextMarkTextContent": "code"
+				},
+				{
+					"Type": "NodeText",
+					"Data": "​ content."
+				}
+			]
+		},
+		{
+			"ID": "20250512161718-kcujh4w",
+			"Type": "NodeBlockquote",
+			"Properties": {
+				"id": "20250512161718-kcujh4w",
+				"updated": "20250512161728"
+			},
+			"Children": [
+				{
+					"Type": "NodeBlockquoteMarker",
+					"Data": "\u003e"
+				},
+				{
+					"ID": "20250512161721-cuxs8ka",
+					"Type": "NodeParagraph",
+					"Properties": {
+						"id": "20250512161721-cuxs8ka",
+						"updated": "20250512161728"
+					},
+					"Children": [
+						{
+							"Type": "NodeText",
+							"Data": "This is a quote block"
+						}
+					]
+				}
+			]
+		},
+		{
+			"ID": "20250512161618-m73ag36",
+			"Type": "NodeParagraph",
+			"Properties": {
+				"id": "20250512161618-m73ag36",
+				"updated": "20250522144704"
+			},
+			"Children": [
+				{
+					"Type": "NodeText",
+					"Data": "This is a NodeParagraph\nWith lf"
+				}
+			]
+		},
+		{
+			"ID": "20250522144659-tf0i68k",
+			"Type": "NodeParagraph",
+			"Properties": {
+				"id": "20250522144659-tf0i68k",
+				"updated": "20250522144659"
+			}
+		},
+		{
+			"ID": "20250512161607-wjqo12o",
+			"Type": "NodeParagraph",
+			"Properties": {
+				"id": "20250512161607-wjqo12o",
+				"updated": "20250512161607"
+			}
+		}
+	]
+}

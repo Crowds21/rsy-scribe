@@ -10,8 +10,9 @@
 use chrono::Local;
 use rand::Rng;
 use serde::{Deserialize, Serialize};
-use std::collections::{HashMap, HashSet};
 use serde_bytes::ByteBuf;
+use std::collections::{HashMap, HashSet};
+use std::str::FromStr;
 use strum::EnumString;
 
 // type NodeType = i32;
@@ -48,7 +49,7 @@ pub struct Node {
     #[serde(skip)]
     pub last_child: Option<Box<Node>>,
 
-    #[serde(rename="Children",default,skip_serializing_if = "Vec::is_empty")]
+    #[serde(rename = "Children", default, skip_serializing_if = "Vec::is_empty")]
     pub children: Vec<Node>,
 
     #[serde(skip)]
@@ -110,7 +111,7 @@ pub struct Node {
     pub task_list_item_checked: Option<bool>,
 
     // 表
-    #[serde(default,skip_serializing_if = "Vec::is_empty")]
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub table_aligns: Vec<i32>,
 
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -150,7 +151,7 @@ pub struct Node {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub footnotes_ref_id: Option<String>,
 
-    #[serde(default,skip_serializing_if = "Vec::is_empty")]
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub footnotes_refs: Vec<Node>,
 
     // HTML 实体
@@ -161,11 +162,11 @@ pub struct Node {
     #[serde(skip)]
     pub kramdown_ial: Vec<Vec<String>>,
 
-    #[serde(rename="Properties" ,skip_serializing_if = "Option::is_none")]
+    #[serde(rename = "Properties", skip_serializing_if = "Option::is_none")]
     pub properties: Option<HashMap<String, String>>,
 
     // 文本标记
-    #[serde(rename="TextMarkType",skip_serializing_if = "Option::is_none")]
+    #[serde(rename = "TextMarkType", skip_serializing_if = "Option::is_none")]
     pub text_mark_type: Option<String>,
 
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -207,6 +208,22 @@ pub struct Node {
     pub custom_block_info: Option<String>,
 }
 
+impl Node {
+    pub fn create_doc_component(&self) {}
+    /// 递归设置节点类型
+    pub fn set_node_type_for_tree(&mut self) {
+        if let NodeType::Default = self.node_type {
+            self.node_type = NodeType::from_str(&self.type_str).unwrap();
+            for child in &mut self.children {
+                child.set_node_type_for_tree();
+            }
+        }
+    }
+    
+    pub fn has_child(&self) ->bool{
+        self.children.len() > 0
+    }
+}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "PascalCase")]
@@ -237,13 +254,12 @@ pub struct ListData {
     pub checked: Option<bool>, // 任务列表项是否勾选
 
     /// Base64 下的 List 前缀标识
-    #[serde(rename="Marker",skip_serializing_if = "Option::is_none")]
+    #[serde(rename = "Marker", skip_serializing_if = "Option::is_none")]
     pub marker: Option<ByteBuf>, // 列表标识符原始字节
 
     #[serde(rename = "Num", skip_serializing_if = "Option::is_none")]
     pub num: Option<i32>, // 有序列表项修正序号
 }
-
 
 pub fn new_node_id() -> String {
     let now = Local::now();
@@ -302,16 +318,18 @@ pub fn is_node_id_pattern(s: &str) -> bool {
 
     true
 }
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize,Default,EnumString)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default, EnumString)]
 #[repr(i32)]
 #[serde(rename_all = "camelCase")]
 #[strum(serialize_all = "PascalCase")]
-#[strum(ascii_case_insensitive)]      
+#[strum(ascii_case_insensitive)]
 pub enum NodeType {
     #[default]
-    Default=-1,
+    Default = -1,
     // CommonMark
     NodeDocument = 0,
+    /// 可独立展示的段落(思源中的一个 Block)
+    /// Ratatui - Line
     NodeParagraph = 1,
     NodeHeading = 2,
     NodeHeadingC8hMarker = 3,
@@ -319,6 +337,7 @@ pub enum NodeType {
     NodeBlockquote = 5,
     NodeBlockquoteMarker = 6,
     NodeList = 7,
+    /// 列表项.
     NodeListItem = 8,
     NodeHtmlBlock = 9,
     NodeInlineHtml = 10,
@@ -513,7 +532,9 @@ impl Node {
             NodeType::NodeEmU8eOpenMarker | NodeType::NodeEmU8eCloseMarker => "_",
             NodeType::NodeStrongA6kOpenMarker | NodeType::NodeStrongA6kCloseMarker => "**",
             NodeType::NodeStrongU8eOpenMarker | NodeType::NodeStrongU8eCloseMarker => "__",
-            NodeType::NodeStrikethrough2OpenMarker | NodeType::NodeStrikethrough2CloseMarker => "~~",
+            NodeType::NodeStrikethrough2OpenMarker | NodeType::NodeStrikethrough2CloseMarker => {
+                "~~"
+            }
             NodeType::NodeSupOpenMarker | NodeType::NodeSupCloseMarker => "^",
             NodeType::NodeSubOpenMarker | NodeType::NodeSubCloseMarker => "~",
             NodeType::NodeInlineMathOpenMarker | NodeType::NodeInlineMathCloseMarker => "$",
@@ -530,5 +551,4 @@ impl Node {
             _ => "",
         }
     }
-    
 }

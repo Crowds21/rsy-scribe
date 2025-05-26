@@ -25,7 +25,7 @@ pub struct CompositorContext {
     pub scroll: Option<usize>,
 }
 
-impl Compositor {
+impl<'a> Compositor {
     pub fn new() -> Compositor {
         let editor: Box<dyn Component> = Box::new(EditorView::new());
         let layers = vec![editor];

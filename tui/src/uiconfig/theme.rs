@@ -156,7 +156,7 @@ fn process_styles(
                 style = style.bg(bg_color);
             }
             if let Ok(fg_color) = change_brightness(&fg_str, fg_scale) {
-                style = style.bg(fg_color);
+                style = style.fg(fg_color);
             }
 
             // 修饰符处理（可选字段）

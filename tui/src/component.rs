@@ -1,7 +1,7 @@
 pub mod search_box;
 pub mod editor;
 pub mod gutter;
-mod block;
+pub mod block;
 
 use std::any::Any;
 use std::time::Instant;

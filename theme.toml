@@ -1,6 +1,7 @@
 "editor.bg" = { bg = "bg" }
 "editor.font" = { fg = "fg" }
 
+"node.heading.title" = {fg="orange",modifier="bold"}
 "node.heading.h1" ={fg="orange"}
 "node.heading.h2" ={fg="orange"}
 "node.heading.h3" ={fg="orange"}
@@ -9,7 +10,7 @@
 "node.heading.h6" ={fg="orange"}
 
 "node.blockquote" ={fg="gray"}
-"node.text.strong" = {fg="gary"}
+"node.text.strong" = {fg="gray",modifier="bold"}
 "node.text.link" ={fg="yellow"}
 "node.text.linkText" ={fg="blue"}
 "node.text.mathblock" ={fg="yellow"}
