@@ -40,7 +40,7 @@ impl<'a> EditorView<'a> {
             gutter: GutterConfig::default(),
         }
     }
-
+    
     fn cursor_move(&mut self, code: KeyCode) -> EventResult {
         let new_pos = match code {
             KeyCode::Down if self.cursor_position.y + 1 < self.content_area.height => Position {
@@ -66,27 +66,37 @@ impl<'a> EditorView<'a> {
     }
 
     pub fn render_document(
-        &mut self,
-        frame: &mut Frame,
+        // 使用不同的生命周期名称 'b
+        & mut self,
+        frame: & mut Frame,
         content_area: Rect,
-        cx: &mut CompositorContext,
+        cx: & mut CompositorContext,
     ) {
         let mut vec: Vec<RenderedBlock> = Vec::new();
         if let Some(node) = &mut self.document {
             vec = doc::create_document_blocks(node, cx);
         }
-        // TODO render vc
+
         let mut current_y = content_area.y;
         let mut remaining_height = content_area.height;
+
         for item in vec {
             if remaining_height == 0 {
-                break; // 没有剩余空间时停止渲染
+                break;
             }
 
-            // current_y += render_height;
-            // remaining_height -= render_height;
-            // item.render(frame,re);
-            // let render_height = height.min(remaining_height);
+            let render_height = item.rendered_height.min(remaining_height);
+            let render_area = Rect {
+                x: content_area.x,
+                y: current_y,
+                width: content_area.width,
+                height: render_height,
+            };
+            item.render(frame, render_area);
+            // 确保 RenderedBlock 实现了 Widget trait
+
+            current_y += render_height;
+            remaining_height -= render_height;
         }
     }
 }

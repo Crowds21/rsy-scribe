@@ -1,33 +1,33 @@
-pub mod search_box;
+pub mod block;
 pub mod editor;
 pub mod gutter;
-pub mod block;
+pub mod search_box;
 
-use std::any::Any;
-use std::time::Instant;
-use ratatui::{layout::Rect, Frame};
+use crate::compositor::{Callback, CompositorContext, EventResult};
 use crossterm::event::KeyEvent;
 use ratatui::widgets::Paragraph;
-use crate::compositor::{Callback, CompositorContext, EventResult};
+use ratatui::{layout::Rect, Frame};
+use std::any::Any;
+use std::time::Instant;
 
-pub trait Component: Any + AnyComponent{
+pub trait Component: Any + AnyComponent {
     fn render(&mut self, f: &mut Frame, area: Rect, cx: &mut CompositorContext);
-    fn handle_event(&mut self, event: KeyEvent, context: &mut CompositorContext) -> EventResult{
+    fn handle_event(&mut self, event: KeyEvent, context: &mut CompositorContext) -> EventResult {
         EventResult::Ignored(None)
     }
     fn cursor_position(&self, area: Rect) -> Option<(u16, u16)> {
         None
     }
-    fn render_loading(&self,frame: &mut Frame) {
+    fn render_loading(&self, frame: &mut Frame) {
         let spinner = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"];
         let frame_num = (Instant::now().elapsed().as_millis() / 100) % spinner.len() as u128;
         frame.render_widget(Paragraph::new(spinner[frame_num as usize]), frame.size());
     }
 
-    fn id(&self) -> Option<&'static str> {
+    fn id(&self) -> Option<&str> {
         None
     }
-    fn type_name(&self) -> &'static str {
+    fn type_name(&self) -> &str {
         std::any::type_name::<Self>()
     }
 }

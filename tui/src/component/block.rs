@@ -1,6 +1,6 @@
 use ratatui::layout::Rect;
 use ratatui::text::{Line, Span};
-use ratatui::widgets::{Block, List, ListItem, Paragraph, Table};
+use ratatui::widgets::{Block, List, ListItem, Paragraph, Table, Wrap};
 use ratatui::Frame;
 
 pub mod doc;
@@ -10,13 +10,36 @@ pub mod doc;
 ///
 pub struct RenderedBlock<'a> {
     pub component: BlockComponent<'a>,
-    pub rendered_height: usize,
+    pub rendered_height: u16,
+}
+impl<'a> RenderedBlock<'a>{
+        pub fn render(&self, frame: &mut Frame, rect: Rect) {
+            match &self.component {
+                BlockComponent::InValid => {}
+                BlockComponent::Span(_) => {}
+                BlockComponent::Line(line) => {
+                    frame.render_widget(line, rect);
+                }
+                BlockComponent::Paragraph(item) => {
+                    frame.render_widget(item, rect);
+                }
+                BlockComponent::Table(_) => {}
+                BlockComponent::List(lines) => {
+                    let paragraph = Paragraph::new(lines.clone())
+                        .wrap(Wrap{ trim: false}); // 启用自动换行
+                    frame.render_widget(paragraph, rect);
+                }
+                BlockComponent::BLock(_) => {}
+                BlockComponent::ListItem(_)=>{}
+            }
+        }
 }
 #[derive(Clone)]
 pub enum BlockComponent<'a> {
     InValid,
     Span(Span<'a>),
     Line(Line<'a>),
+    //  Ratatui paragraph 组件可以实现换行
     Paragraph(Paragraph<'a>),
     Table(Table<'a>),
     List(Vec<Line<'a>>),
@@ -24,19 +47,4 @@ pub enum BlockComponent<'a> {
     ListItem(Vec<Line<'a>>),
     BLock(Block<'a>),
 }
-impl<'a> BlockComponent<'a> {
-    pub fn render(&self, frame: &mut Frame<'a>, rect: Rect) {
-        match self {
-            BlockComponent::InValid => {}
-            BlockComponent::Span(_) => {}
-            BlockComponent::Line(_) => {}
-            BlockComponent::Paragraph(item) => {
-                frame.render_widget(item, rect);
-            }
-            BlockComponent::Table(_) => {}
-            BlockComponent::List(_) => {}
-            BlockComponent::BLock(_) => {}
-            BlockComponent::ListItem(_)=>{}
-        }
-    }
-}
+

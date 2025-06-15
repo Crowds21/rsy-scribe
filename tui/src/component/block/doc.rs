@@ -182,18 +182,20 @@ fn create_heading<'a>(node: &'a Node, cx: &'a CompositorContext) -> Option<Rende
             2..=3 => {
                 // H2-H3: 单实线下划线
                 let paragraph = Paragraph::new(vec![
+                    Line::from(""),
                     Line::from(spans),
                     Line::from("─".repeat(total_width)), // 实线
                 ]);
-                (paragraph, 2)
+                (paragraph, 3)
             }
             _ => {
                 // H4-H6: 虚线下划线
                 let paragraph = Paragraph::new(vec![
+                    Line::from(""),
                     Line::from(spans),
                     Line::from("﹏".repeat(total_width)), // 中文虚线符号
                 ]);
-                (paragraph, 2)
+                (paragraph, 3)
             }
         };
         RenderedBlock {
@@ -205,7 +207,7 @@ fn create_heading<'a>(node: &'a Node, cx: &'a CompositorContext) -> Option<Rende
 }
 
 /// 创建 List 组件
-/// 
+///
 fn create_list<'a>(node: &'a Node, cx: &'a CompositorContext) -> Option<RenderedBlock<'a>> {
     if !matches!(node.node_type, NodeType::NodeList) {
         return None;
@@ -215,36 +217,35 @@ fn create_list<'a>(node: &'a Node, cx: &'a CompositorContext) -> Option<Rendered
     for child in node.children.iter() {
         let mut child_blocks = Vec::new();
         create_tui_element(child, cx, &mut child_blocks);
-        
+
         for block in child_blocks {
-            match block.component {
-                BlockComponent::ListItem(mut items) => { // TOOD  Line 的部分看看可不可以直接删除掉.
-                    // item 是 Vec<Line>. list_items 也是 Vec<Line>
-                    // 把 items 中的元素放入 
-                    list_items.extend(items.into_iter());
-                }
-                _ => {}
+            if let BlockComponent::ListItem(items) = block.component {
+                // TOOD  Line 的部分看看可不可以直接删除掉.
+                // item 是 Vec<Line>. list_items 也是 Vec<Line>
+                // 把 items 中的元素放入
+                list_items.extend(items.into_iter());
             }
         }
     }
     let len = list_items.len();
-    (!list_items.is_empty()).then(|| RenderedBlock {
+    (!list_items.is_empty()).then_some(RenderedBlock {
         component: BlockComponent::List(list_items),
-        rendered_height: len,
+        rendered_height: len as u16,
     })
 }
 
-/// TODO 多级缩进
+///
 fn create_list_item<'a>(node: &'a Node, cx: &'a CompositorContext) -> Option<RenderedBlock<'a>> {
     let mut child_blocks = Vec::new();
 
-    // 1. Process child nodes
     for child in node.children.iter() {
         create_tui_element(child, cx, &mut child_blocks);
     }
 
-    // 2. Get list item data
-    let bullet_char = node.list_data.as_ref()
+    // Get list item data
+    let bullet_char = node
+        .list_data
+        .as_ref()
         .and_then(|data| data.bullet_char)
         .map(|c| c as char);
 
@@ -255,7 +256,7 @@ fn create_list_item<'a>(node: &'a Node, cx: &'a CompositorContext) -> Option<Ren
                 if let Some(bullet) = bullet_char {
                     line.spans.insert(0, Span::raw(format!("{} ", bullet)));
                 }
-            },
+            }
             BlockComponent::List(list) => {
                 // Indent each item in the nested list
                 for item in list.iter_mut() {
@@ -266,36 +267,25 @@ fn create_list_item<'a>(node: &'a Node, cx: &'a CompositorContext) -> Option<Ren
         }
     }
 
-    // 4. Convert child_blocks into a ListItem
-    // Example: 
-    // child_blocks[0] =  BlockComponent::Line // ListItem(Vec<Line<'a>>),
-    // child_blocks[1] = BLockComponent::List  // List(Vec<Line<'a>>),
-    //
-    // TODO 基于child_blocks 生成一个 Vec<Line>
+    // Convert child_blocks(List or Line) into a ListItem
+    // 基于child_blocks 生成一个 Vec<Line>
     let mut lines: Vec<Line> = Vec::new();
-
     for block in child_blocks {
         match block.component {
             BlockComponent::Line(line) => {
                 lines.push(line);
-            },
+            }
             BlockComponent::List(nested_lines) => {
                 // Flatten nested list items into our lines
                 lines.extend(nested_lines);
-            },
+            }
             _ => {}
         }
     }
 
-    if lines.is_empty() {
-        None
-    } else {
-        let len = lines.len();
-        Some(RenderedBlock {
-            component: BlockComponent::ListItem(lines),
-            rendered_height: len, // You might want to calculate this properly
-        })
-    }
+    let len = lines.len();
+    (!lines.is_empty()).then_some(RenderedBlock {
+        component: BlockComponent::List(lines),
+        rendered_height: len as u16,
+    })
 }
-
-
