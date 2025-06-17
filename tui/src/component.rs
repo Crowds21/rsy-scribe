@@ -2,9 +2,10 @@ pub mod block;
 pub mod editor;
 pub mod gutter;
 pub mod search_box;
+mod scroll;
 
 use crate::compositor::{Callback, CompositorContext, EventResult};
-use crossterm::event::KeyEvent;
+use crossterm::event::{Event, KeyEvent};
 use ratatui::widgets::Paragraph;
 use ratatui::{layout::Rect, Frame};
 use std::any::Any;
@@ -12,7 +13,7 @@ use std::time::Instant;
 
 pub trait Component: Any + AnyComponent {
     fn render(&mut self, f: &mut Frame, area: Rect, cx: &mut CompositorContext);
-    fn handle_event(&mut self, event: KeyEvent, context: &mut CompositorContext) -> EventResult {
+    fn handle_event(&mut self, event: &Event, context: &mut CompositorContext) -> EventResult {
         EventResult::Ignored(None)
     }
     fn cursor_position(&self, area: Rect) -> Option<(u16, u16)> {

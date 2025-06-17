@@ -1,4 +1,4 @@
-/// 参考 Lute 实现的
+/// 参考 Lute
 
 pub mod node;
 mod parse;

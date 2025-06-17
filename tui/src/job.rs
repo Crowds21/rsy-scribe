@@ -4,6 +4,7 @@ use once_cell::sync::OnceCell;
 use std::ops::Deref;
 use std::sync::OnceLock;
 use tokio::sync::mpsc::{self, Receiver, Sender};
+use crate::model::editor_model::EditorModel;
 
 type Callback = Box<dyn FnOnce(&mut Compositor) + Send + 'static>;
 
@@ -16,6 +17,7 @@ pub struct JobQueue {
 impl JobQueue {
     pub fn handle_callback(
         &self,
+        editor_model:&mut EditorModel,
         compositor: &mut Compositor,
         call: anyhow::Result<Option<Callback>>,
     ) {

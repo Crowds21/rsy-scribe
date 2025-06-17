@@ -221,8 +221,9 @@ impl Node {
     }
     
     pub fn has_child(&self) ->bool{
-        self.children.len() > 0
+        !self.children.is_empty()
     }
+     
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

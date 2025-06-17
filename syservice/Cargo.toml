@@ -18,4 +18,5 @@ anyhow = "1"
 rand = "0.9.0"
 chrono = "0.4.40"
 strum = { version = "0.27.1", features = ["derive"] }
-
+ropey = "1.6.1"
+rangemap = { version = "1", features = ["serde1"] }

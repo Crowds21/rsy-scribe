@@ -99,17 +99,42 @@ impl<'a> EditorView<'a> {
             remaining_height -= render_height;
         }
     }
+
+    fn handle_key_event(&mut self,event:&KeyEvent, cx: &mut CompositorContext) -> EventResult {
+        match event.code {
+            KeyCode::Char(' ') => {
+                // 当按下空格键时，添加 SearchBox 组件
+                let search_box = SearchBox::new("Search", "Result");
+                // TODO:  由于 Rust 默认不允许"多重借用???" Helix通过
+                //  单独的函数来将一个把 Compositor 作为参数的 fn 存入 callback
+                //  参考 compositor 中的 handle_event 函数
+                //  每一个组件实际上会返回一个 将 compositor 作为参数的函数.
+                //  然后这个函数在 Compositor.handle_event 中被执行
+                let callback: Callback = Box::new(
+                    move |compositor: &mut Compositor, cx: &mut CompositorContext| {
+                        compositor.push(Box::new(search_box));
+                    },
+                );
+                //  返回给上一层的 callback
+                EventResult::Consumed(Some(callback))
+            }
+            KeyCode::Down | KeyCode::Up | KeyCode::Left | KeyCode::Right => {
+                self.cursor_move(event.code)
+            }
+            _ => EventResult::Ignored(None), // 其他按键不处理
+        }
+    }
 }
 
 impl Component for EditorView<'static> {
     fn render(&mut self, frame: &mut Frame, area: Rect, cx: &mut CompositorContext) {
         let area = frame.size();
 
-        // 1. 清空背景
+        // 清空背景
         let editor_bg = cx.theme.styles.get("editor.bg").unwrap();
         frame.render_widget(Block::default().style(*editor_bg), area);
 
-        // 2. 计算编辑器区域（减去状态栏和可能的 BufferLine）
+        // 计算编辑器区域（减去状态栏和可能的 BufferLine）
         let mut editor_area = Layout::default()
             .direction(Direction::Vertical)
             .constraints(vec![
@@ -168,30 +193,17 @@ impl Component for EditorView<'static> {
         frame.render_widget(status, status_area);
     }
 
-    fn handle_event(&mut self, event: KeyEvent, context: &mut CompositorContext) -> EventResult {
-        match event.code {
-            KeyCode::Char(' ') => {
-                // 当按下空格键时，添加 SearchBox 组件
-                let search_box = SearchBox::new("Search", "Result");
-                // TODO:  由于 Rust 默认不允许"多重借用???" Helix通过
-                //  单独的函数来将一个把 Compositor 作为参数的 fn 存入 callback
-                //  参考 compositor 中的 handle_event 函数
-                //  每一个组件实际上会返回一个 将 compositor 作为参数的函数.
-                //  然后这个函数在 Compositor.handle_event 中被执行
-                let callback: Callback = Box::new(
-                    move |compositor: &mut Compositor, cx: &mut CompositorContext| {
-                        compositor.push(Box::new(search_box));
-                    },
-                );
-                //  返回给上一层的 callback
-                EventResult::Consumed(Some(callback))
+    fn handle_event(&mut self, event: &Event, cx: &mut CompositorContext) -> EventResult {
+        match event { 
+            Event::Key(e) =>{
+                self.handle_key_event(e, cx) 
             }
-            KeyCode::Down | KeyCode::Up | KeyCode::Left | KeyCode::Right => {
-                self.cursor_move(event.code)
+            _ => {
+                EventResult::Consumed(None)
             }
-            _ => EventResult::Ignored(None), // 其他按键不处理
         }
     }
+
 
     fn cursor_position(&self, area: Rect) -> Option<(u16, u16)> {
         todo!()

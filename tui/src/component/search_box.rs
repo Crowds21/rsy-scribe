@@ -6,7 +6,7 @@ use crate::component::search_box::search_box_debounce::SearchBoxDebounce;
 use crate::compositor::{Compositor, CompositorContext, EventResult};
 use crate::debounce::{send_blocking, AsyncHook};
 use crate::job::dispatch;
-use crossterm::event::KeyEvent;
+use crossterm::event::{KeyCode, KeyEvent};
 use ratatui::{
     prelude::*,
     style::{Modifier, Style},
@@ -127,67 +127,10 @@ impl Component for SearchBox {
         frame.render_stateful_widget(list, chunks[1], &mut self.list_state);
     }
 
-    fn handle_event(&mut self, event: KeyEvent, context: &mut CompositorContext) -> EventResult {
-        match event.code {
-            crossterm::event::KeyCode::Char(c) => self.handle_search_input(c),
-            crossterm::event::KeyCode::Backspace => self.handle_delete_char(),
-            crossterm::event::KeyCode::Delete => self.handle_delete_char(),
-            crossterm::event::KeyCode::Left => {
-                if self.cursor_position > 2 {
-                    let prev_char_len = self.input[..self.cursor_position]
-                        .chars()
-                        .last()
-                        .unwrap()
-                        .len_utf8();
-                    self.cursor_position -= prev_char_len;
-                }
-                EventResult::Consumed(None)
-            }
-            crossterm::event::KeyCode::Right => {
-                if self.cursor_position < self.input.len() {
-                    let next_char_len = self.input[self.cursor_position..]
-                        .chars()
-                        .next()
-                        .unwrap()
-                        .len_utf8();
-                    self.cursor_position += next_char_len;
-                }
-                EventResult::Consumed(None)
-            }
-            crossterm::event::KeyCode::End => {
-                self.cursor_position = self.input.len();
-                EventResult::Consumed(None)
-            }
-            crossterm::event::KeyCode::Enter => self.load_document(),
-            crossterm::event::KeyCode::Down => {
-                if !self.results.is_empty() {
-                    self.selected_result = Some(match self.selected_result {
-                        Some(i) if i <= self.results.len() - 1 => i + 1,
-                        None if !self.results.is_empty() => 0,
-                        _ => self.results.len() - 1,
-                    });
-                }
-
-                EventResult::Consumed(None)
-            }
-            crossterm::event::KeyCode::Up => {
-                if !self.results.is_empty() {
-                    self.selected_result = match self.selected_result {
-                        Some(0) | None => Some(0),
-                        Some(i) => Some(i - 1),
-                    };
-                }
-                EventResult::Consumed(None)
-            }
-            crossterm::event::KeyCode::Esc => {
-                let callback: crate::compositor::Callback = Box::new(
-                    move |compositor: &mut Compositor, cx: &mut CompositorContext| {
-                        compositor.pop();
-                    },
-                );
-                EventResult::Consumed(Some(callback))
-            }
-            _ => EventResult::Ignored(None),
+    fn handle_event(&mut self, event: &Event, cx: &mut CompositorContext) -> EventResult {
+        match event {
+            Event::Key(e) => self.handle_key_event(e, cx),
+            _ => EventResult::Consumed(None),
         }
     }
     fn id(&self) -> Option<&'static str> {
@@ -253,20 +196,80 @@ impl<'a> SearchBox {
             let open_document = move |compositor: &mut Compositor| {
                 let component = compositor.find::<EditorView>();
                 if let Some(editorView) = component {
-                    match sy_nodes {
-                        Ok(node) => {
-                            editorView.document = Some(node);
-                            compositor.pop();
-                            // TODO 这里还需要进行计算操作
-                            //  每个元素组件占据多少 offset.
-                            //  以便处理窗口滑动
-                        }
-                        Err(_) => editorView.document = None,
+                    if let Ok(node) = sy_nodes {
+                        editorView.document = Some(node);
+                        compositor.pop();
+                        // TODO 这里还需要进行计算操作
+                        //  每个元素组件占据多少 offset.
+                        //  以便处理窗口滑动
                     }
                 }
             };
             dispatch(open_document).await
         });
         EventResult::Consumed(None)
+    }
+    fn handle_key_event(&mut self, event: &KeyEvent, cx: &mut CompositorContext) -> EventResult {
+        match event.code {
+            KeyCode::Char(c) => self.handle_search_input(c),
+            KeyCode::Backspace => self.handle_delete_char(),
+            KeyCode::Delete => self.handle_delete_char(),
+            KeyCode::Left => {
+                if self.cursor_position > 2 {
+                    let prev_char_len = self.input[..self.cursor_position]
+                        .chars()
+                        .last()
+                        .unwrap()
+                        .len_utf8();
+                    self.cursor_position -= prev_char_len;
+                }
+                EventResult::Consumed(None)
+            }
+            KeyCode::Right => {
+                if self.cursor_position < self.input.len() {
+                    let next_char_len = self.input[self.cursor_position..]
+                        .chars()
+                        .next()
+                        .unwrap()
+                        .len_utf8();
+                    self.cursor_position += next_char_len;
+                }
+                EventResult::Consumed(None)
+            }
+            KeyCode::End => {
+                self.cursor_position = self.input.len();
+                EventResult::Consumed(None)
+            }
+            KeyCode::Enter => self.load_document(),
+            KeyCode::Down => {
+                if !self.results.is_empty() {
+                    self.selected_result = Some(match self.selected_result {
+                        Some(i) if i <= self.results.len() - 1 => i + 1,
+                        None if !self.results.is_empty() => 0,
+                        _ => self.results.len() - 1,
+                    });
+                }
+
+                EventResult::Consumed(None)
+            }
+            crossterm::event::KeyCode::Up => {
+                if !self.results.is_empty() {
+                    self.selected_result = match self.selected_result {
+                        Some(0) | None => Some(0),
+                        Some(i) => Some(i - 1),
+                    };
+                }
+                EventResult::Consumed(None)
+            }
+            crossterm::event::KeyCode::Esc => {
+                let callback: crate::compositor::Callback = Box::new(
+                    move |compositor: &mut Compositor, cx: &mut CompositorContext| {
+                        compositor.pop();
+                    },
+                );
+                EventResult::Consumed(Some(callback))
+            }
+            _ => EventResult::Ignored(None),
+        }
     }
 }

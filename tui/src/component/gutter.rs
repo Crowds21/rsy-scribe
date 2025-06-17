@@ -4,8 +4,10 @@ use ratatui::widgets::{Block, Borders, Paragraph};
 use ratatui::Frame;
 use unicode_width::UnicodeWidthStr;
 
-/// 编辑器侧边栏
+/// 为每一行生成对应的GUtter 样式
+pub type GutterFn<'doc> = Box<dyn FnMut(usize, bool, bool, &mut String) -> Option<Style> + 'doc>;
 
+/// 编辑器侧边栏
 pub struct GutterConfig {
     /// 侧边栏展示顺序(从左到右)
     pub layout: Vec<GutterType>,

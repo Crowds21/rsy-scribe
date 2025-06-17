@@ -4,6 +4,7 @@ pub mod status;
 pub mod component;
 mod uiconfig;
 mod debounce;
+pub mod model;
 
 #[cfg(test)]
 mod tests {
