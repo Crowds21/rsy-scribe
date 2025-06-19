@@ -17,7 +17,7 @@ pub struct Application {
     terminal: Terminal<CrosstermBackend<io::Stdout>>,
     compositor: Compositor,
     compositor_context: CompositorContext,
-    editor_model: EditorModel<'static>,
+    editor_model: EditorModel,
     pub jobs: JobQueue, // 引用全局 JobQueue
 }
 impl Application {

@@ -11,10 +11,12 @@
 
 "node.blockquote" ={fg="gray"}
 "node.text.strong" = {fg="gray",modifier="bold"}
-"node.text.link" ={fg="yellow"}
-"node.text.linkText" ={fg="blue"}
+"node.text.italic" = {fg="gray",modifier="italic"}
+"node.text.mark" = {bg="yellow"}
+"node.text.blockref" ={fg="yellow"}
+"node.text.weblink" ={fg="blue"}
 "node.text.mathblock" ={fg="yellow"}
-"node.text.codespan" ={fg="yellow"}
+"node.text.code" ={fg="yellow"}
 
 
 "ui.gutter" = { fg = "bg", bg_scale = 1.5 }

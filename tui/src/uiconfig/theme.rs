@@ -17,7 +17,6 @@ pub struct Theme {
     pub name: String,
     // UI styles are stored in a HashMap
     pub styles: HashMap<String, Style>,
-    // tree-sitter highlight styles are stored in a Vec to optimize lookups
 }
 impl Theme {
     pub fn name(&self) -> &str {

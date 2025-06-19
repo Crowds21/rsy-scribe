@@ -16,8 +16,6 @@ pub struct GutterConfig {
 pub enum GutterType {
     /// Block type icons
     Icon,
-    /// Show line numbers
-    LineNumbers,
     /// Show one blank space
     Spacer,
 }
@@ -25,7 +23,7 @@ impl Default for GutterConfig {
     fn default() -> Self {
         Self {
             layout: vec![
-                GutterType::LineNumbers,
+                // GutterType::LineNumbers,
                 GutterType::Spacer,
                 GutterType::Icon,
             ],
@@ -33,33 +31,14 @@ impl Default for GutterConfig {
     }
 }
 
-/// 渲染Gutter区域
+/// TODO 渲染Gutter区域. 
+///  渲染组件时,渲染对应的 icon
+///  空隙
 pub fn render_gutter(frame: &mut Frame, area: Rect, config: &GutterConfig, total_lines: usize) {
     let mut x_offset = area.x;
     let height = area.height as usize;
-
     for gutter_type in &config.layout {
         let (width, content) = match gutter_type {
-            GutterType::LineNumbers => {
-                // 计算行号所需宽度（至少3字符）
-                let width = total_lines.to_string().len().max(3) as u16;
-                let mut text = String::new();
-
-                for visual_line in 0..height {
-                    let doc_line = visual_line + 1;
-                    if doc_line <= total_lines {
-                        let style = Style::default();
-                        let line_span = Span::styled(
-                            format!("{:>width$}", doc_line, width = width as usize),
-                            style,
-                        );
-                        text.push_str(&line_span.content);
-                    }
-                    text.push('\n');
-                }
-
-                (width + 1, text) // +1 用于右边距
-            }
             GutterType::Spacer => {
                 (1, "\n".repeat(height - 1)) // 1字符宽的空白
             }
@@ -98,7 +77,6 @@ pub fn render_gutter(frame: &mut Frame, area: Rect, config: &GutterConfig, total
 impl GutterType {
     fn width(&self, total_lines: usize) -> u16 {
         match self {
-            GutterType::LineNumbers => total_lines.to_string().len().max(3) as u16 + 1,
             GutterType::Spacer => 1,
             GutterType::Icon => 1,
         }

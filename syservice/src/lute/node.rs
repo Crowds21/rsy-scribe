@@ -19,9 +19,12 @@ use strum::EnumString;
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "PascalCase")]
 pub struct Node {
+    /// 用于在解析的时候确定组件高度
+    #[serde(skip)]
+    pub height:Option<usize>,
     #[serde(rename = "ID", skip_serializing_if = "Option::is_none")]
     pub id: Option<String>,
-
+     
     #[serde(skip)]
     pub box_: String,
 
@@ -206,24 +209,6 @@ pub struct Node {
 
     #[serde(skip_serializing_if = "Option::is_none")]
     pub custom_block_info: Option<String>,
-}
-
-impl Node {
-    pub fn create_doc_component(&self) {}
-    /// 递归设置节点类型
-    pub fn set_node_type_for_tree(&mut self) {
-        if let NodeType::Default = self.node_type {
-            self.node_type = NodeType::from_str(&self.type_str).unwrap();
-            for child in &mut self.children {
-                child.set_node_type_for_tree();
-            }
-        }
-    }
-    
-    pub fn has_child(&self) ->bool{
-        !self.children.is_empty()
-    }
-     
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -550,6 +535,102 @@ impl Node {
             NodeType::NodeOpenParen => "(",
             NodeType::NodeCloseParen => ")",
             _ => "",
+        }
+    }
+
+    /// 判断该 block 是否为闪卡
+    pub fn is_flash_card(&self) -> bool {
+        self.properties.as_ref()
+            .and_then(|props| props.get("custom-riff-decks"))
+            .map(|value| !value.is_empty())
+            .unwrap_or(false)
+    }
+
+    pub fn create_doc_component(&self) {}
+    /// 递归设置节点类型
+    pub fn set_node_type_for_tree(&mut self) {
+        if let NodeType::Default = self.node_type {
+            self.node_type = NodeType::from_str(&self.type_str).unwrap();
+            for child in &mut self.children {
+                child.set_node_type_for_tree();
+            }
+        }
+    }
+
+    pub fn has_child(&self) -> bool {
+        !self.children.is_empty()
+    }
+    /// 计算单个节点渲染高度
+    fn calculate_node_height(&self, node: &Node) -> usize {
+        match node.node_type {
+            NodeType::NodeHeading => 1,
+            NodeType::NodeParagraph=> 1,
+            NodeType::NodeList=>2, // 添加边框
+            _ => 1,
+        }
+    }
+}
+impl Default for Node {
+    fn default() -> Node {
+        Node {
+            id: None,
+            height: None,
+            box_: "".to_string(),
+            path: "".to_string(),
+            spec: None,
+            node_type: Default::default(),
+            parent: None,
+            previous: None,
+            next: None,
+            first_child: None,
+            last_child: None,
+            children: vec![],
+            tokens: Default::default(),
+            type_str: "".to_string(),
+            data: None,
+            close: false,
+            last_line_blank: false,
+            last_line_checked: false,
+            code_marker_len: None,
+            is_fenced_code_block: None,
+            code_block_fence_char: None,
+            code_block_fence_len: None,
+            code_block_fence_offset: None,
+            code_block_open_fence: None,
+            code_block_info: None,
+            code_block_close_fence: None,
+            html_block_type: None,
+            list_data: None,
+            task_list_item_checked: None,
+            table_aligns: vec![],
+            table_cell_align: None,
+            table_cell_content_width: None,
+            table_cell_content_max_width: None,
+            link_type: None,
+            link_ref_label: None,
+            heading_level: None,
+            heading_setext: None,
+            heading_normalized_id: None,
+            math_block_dollar_offset: None,
+            footnotes_ref_label: None,
+            footnotes_ref_id: None,
+            footnotes_refs: vec![],
+            html_entity_tokens: None,
+            kramdown_ial: vec![],
+            properties: None,
+            text_mark_type: None,
+            text_mark_a_href: None,
+            text_mark_a_title: None,
+            text_mark_inline_math_content: None,
+            text_mark_inline_memo_content: None,
+            text_mark_block_ref_id: None,
+            text_mark_block_ref_subtype: None,
+            text_mark_file_annotation_ref_id: None,
+            text_mark_text_content: None,
+            attribute_view_id: None,
+            attribute_view_type: None,
+            custom_block_fence_offset: None,
+            custom_block_info: None,
         }
     }
 }

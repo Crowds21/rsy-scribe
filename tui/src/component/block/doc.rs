@@ -14,7 +14,7 @@ pub fn create_document_blocks<'a>(
     cx: &'a mut CompositorContext,
 ) -> Vec<RenderedBlock<'a>> {
     let mut blocks = Vec::new();
-    node.set_node_type_for_tree();
+   node.set_node_type_for_tree();
     // 提前处理 node_type 赋值
     create_tui_element(node, cx, &mut blocks);
     blocks
@@ -95,7 +95,6 @@ fn create_node_paragraph<'a>(
             _ => None,
         })
         .collect();
-
     if spans.is_empty() {
         return None;
     }
@@ -154,7 +153,7 @@ fn create_heading<'a>(node: &'a Node, cx: &'a CompositorContext) -> Option<Rende
             .filter_map(|item| match item.component {
                 BlockComponent::Span(span) => {
                     let text: &str = &span.content.clone();
-                    Some((span, text.width().clone()))
+                    Some((span, text.width()))
                 }
                 _ => None,
             })

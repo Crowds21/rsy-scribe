@@ -1,4 +1,3 @@
-use std::any::Any;
 // 参考 Helix 实现的 UI 调度器
 use crate::component::editor::EditorView;
 use crate::component::Component;
@@ -24,6 +23,7 @@ pub struct Compositor {
 /// 全局状态管理
 pub struct CompositorContext {
     pub theme: Theme,
+    pub editor_model: EditorModel,
     pub scroll: Option<usize>,
 }
 
@@ -99,6 +99,7 @@ impl CompositorContext {
     pub fn new() -> Self {
         Self {
             theme: Theme::default(),
+            editor_model: EditorModel::default(),
             scroll: None,
         }
     }
