@@ -3,6 +3,7 @@ pub mod domain;
 pub mod file;
 mod handler;
 pub mod lute;
+pub mod test_utils;
 
 static REPO_PATH: &str= "/Users/crowds/Notes/SiYuanKnowledgeBase/data";
 static SIYUAN_BASE: &str = "http://127.0.0.1:6806";
