@@ -7,7 +7,7 @@
 		"scroll": "\u0026#123;\u0026quot;rootId\u0026quot;:\u0026quot;20230620165438-1pqr39r\u0026quot;,\u0026quot;startId\u0026quot;:\u0026quot;20231026101149-10uol14\u0026quot;,\u0026quot;endId\u0026quot;:\u0026quot;20231026101149-10uol14\u0026quot;,\u0026quot;scrollTop\u0026quot;:0,\u0026quot;focusId\u0026quot;:\u0026quot;20231026101149-10uol14\u0026quot;,\u0026quot;focusStart\u0026quot;:0,\u0026quot;focusEnd\u0026quot;:0\u0026#125;",
 		"title": "Draft",
 		"type": "doc",
-		"updated": "20250625103010"
+		"updated": "20250625152945"
 	},
 	"Children": [
 		{
@@ -16,7 +16,7 @@
 			"HeadingLevel": 2,
 			"Properties": {
 				"id": "20250512161452-b4yltcf",
-				"updated": "20250625103010"
+				"updated": "20250625152945"
 			},
 			"Children": [
 				{
@@ -486,11 +486,117 @@
 			]
 		},
 		{
-			"ID": "20250624172637-x1jh6x6",
+			"ID": "20250625152117-33q2b72",
+			"Type": "NodeList",
+			"ListData": {},
+			"Properties": {
+				"id": "20250625152117-33q2b72",
+				"updated": "20250625152945"
+			},
+			"Children": [
+				{
+					"ID": "20250625152117-swglaox",
+					"Type": "NodeListItem",
+					"ListData": {
+						"BulletChar": 42,
+						"Marker": "Kg=="
+					},
+					"Properties": {
+						"id": "20250625152117-swglaox",
+						"updated": "20250625152924"
+					},
+					"Children": [
+						{
+							"ID": "20250625152117-1osc3ka",
+							"Type": "NodeParagraph",
+							"Properties": {
+								"id": "20250625152117-1osc3ka",
+								"updated": "20250625152123"
+							},
+							"Children": [
+								{
+									"Type": "NodeText",
+									"Data": "麦当劳的中薯条（Medium French Fries）热量约为320-340大卡（具体数值可能因地区和配方略有差异）"
+								}
+							]
+						},
+						{
+							"ID": "20250625152117-5yrvrfq",
+							"Type": "NodeList",
+							"ListData": {},
+							"Properties": {
+								"id": "20250625152117-5yrvrfq",
+								"updated": "20250625152924"
+							},
+							"Children": [
+								{
+									"ID": "20250625152117-iw78545",
+									"Type": "NodeListItem",
+									"ListData": {
+										"BulletChar": 42,
+										"Marker": "Kg=="
+									},
+									"Properties": {
+										"id": "20250625152117-iw78545",
+										"updated": "20250625152924"
+									},
+									"Children": [
+										{
+											"ID": "20250625152117-5svvyty",
+											"Type": "NodeParagraph",
+											"Properties": {
+												"id": "20250625152117-5svvyty",
+												"updated": "20250625152924"
+											},
+											"Children": [
+												{
+													"Type": "NodeText",
+													"Data": "薯条的重量通常在117克左右，主要成分为土豆、植物油和盐。其中，脂肪含量较高，约占总热量的40%-50%。如果你对热量摄入有严格要求，建议适量食用或选择其他低热量选项。"
+												}
+											]
+										}
+									]
+								}
+							]
+						}
+					]
+				},
+				{
+					"ID": "20250625152117-85nuc23",
+					"Type": "NodeListItem",
+					"ListData": {
+						"BulletChar": 42,
+						"Marker": "Kg=="
+					},
+					"Properties": {
+						"id": "20250625152117-85nuc23",
+						"updated": "20250625152945"
+					},
+					"Children": [
+						{
+							"ID": "20250625152117-a5te0tg",
+							"Type": "NodeParagraph",
+							"Properties": {
+								"id": "20250625152117-a5te0tg",
+								"updated": "20250625152945"
+							},
+							"Children": [
+								{
+									"Type": "NodeText",
+									"Data": "肯德基中的薯条薯条（Medium French Fries）热量约为320-340大卡（具体数值可能因地区和配方略有差异）\n中薯条的重量通常在117克左右，主要成分为土豆、植物油和盐。其中，脂肪含量较高，约占总热量的40%-50%。如果你对热量摄入有严格要求，建议适量食用或选择其他低热量选项。"
+								}
+							]
+						}
+					]
+				}
+			]
+		},
+		{
+			"ID": "20250625152249-5nsmgg7",
 			"Type": "NodeParagraph",
 			"Properties": {
-				"id": "20250624172637-x1jh6x6",
-				"updated": "20250624172637"
+				"id": "20250625152249-5nsmgg7",
+				"updated": "20250625152857"
 			}
 		}
 	]
