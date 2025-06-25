@@ -7,7 +7,7 @@
 		"scroll": "\u0026#123;\u0026quot;rootId\u0026quot;:\u0026quot;20230620165438-1pqr39r\u0026quot;,\u0026quot;startId\u0026quot;:\u0026quot;20231026101149-10uol14\u0026quot;,\u0026quot;endId\u0026quot;:\u0026quot;20231026101149-10uol14\u0026quot;,\u0026quot;scrollTop\u0026quot;:0,\u0026quot;focusId\u0026quot;:\u0026quot;20231026101149-10uol14\u0026quot;,\u0026quot;focusStart\u0026quot;:0,\u0026quot;focusEnd\u0026quot;:0\u0026#125;",
 		"title": "Draft",
 		"type": "doc",
-		"updated": "20250523153605"
+		"updated": "20250625103010"
 	},
 	"Children": [
 		{
@@ -16,7 +16,7 @@
 			"HeadingLevel": 2,
 			"Properties": {
 				"id": "20250512161452-b4yltcf",
-				"updated": "20250523153605"
+				"updated": "20250625103010"
 			},
 			"Children": [
 				{
@@ -45,7 +45,7 @@
 			"ListData": {},
 			"Properties": {
 				"id": "20250512161441-kf86s1d",
-				"updated": "20250523153605"
+				"updated": "20250523153414"
 			},
 			"Children": [
 				{
@@ -211,24 +211,16 @@
 			]
 		},
 		{
-			"ID": "20250512161448-3zuwx87",
-			"Type": "NodeParagraph",
-			"Properties": {
-				"id": "20250512161448-3zuwx87",
-				"updated": "20250512161448"
-			}
-		},
-		{
 			"ID": "20250512161513-8hypgbv",
 			"Type": "NodeParagraph",
 			"Properties": {
 				"id": "20250512161513-8hypgbv",
-				"updated": "20250512161607"
+				"updated": "20250619164820"
 			},
 			"Children": [
 				{
 					"Type": "NodeText",
-					"Data": "This is a line, with "
+					"Data": "This is a long line, with "
 				},
 				{
 					"Type": "NodeTextMark",
@@ -255,21 +247,7 @@
 				},
 				{
 					"Type": "NodeText",
-					"Data": " test"
-				}
-			]
-		},
-		{
-			"ID": "20250512161608-yijl8f6",
-			"Type": "NodeParagraph",
-			"Properties": {
-				"id": "20250512161608-yijl8f6",
-				"updated": "20250512161617"
-			},
-			"Children": [
-				{
-					"Type": "NodeText",
-					"Data": "This is a line, with "
+					"Data": " test. And we also have some "
 				},
 				{
 					"Type": "NodeTextMark",
@@ -278,7 +256,37 @@
 				},
 				{
 					"Type": "NodeText",
-					"Data": "​ content."
+					"Data": "​ content. "
+				},
+				{
+					"Type": "NodeTextMark",
+					"TextMarkType": "block-ref",
+					"TextMarkBlockRefID": "20250512161452-b4yltcf",
+					"TextMarkBlockRefSubtype": "s",
+					"TextMarkTextContent": "BlockRef!"
+				},
+				{
+					"Type": "NodeText",
+					"Data": ". "
+				},
+				{
+					"Type": "NodeTextMark",
+					"TextMarkType": "a",
+					"TextMarkAHref": "https://doc.rust-lang.org/book/title-page.html",
+					"TextMarkTextContent": "The Rust Programming Language - The Rust Programming Language"
+				},
+				{
+					"Type": "NodeText",
+					"Data": ". 测试一下"
+				},
+				{
+					"Type": "NodeTextMark",
+					"TextMarkType": "tag",
+					"TextMarkTextContent": "TODO"
+				},
+				{
+					"Type": "NodeText",
+					"Data": "​"
 				}
 			]
 		},
@@ -328,16 +336,161 @@
 			"ID": "20250522144659-tf0i68k",
 			"Type": "NodeParagraph",
 			"Properties": {
+				"custom-riff-decks": "20230218211946-2kw8jgx",
 				"id": "20250522144659-tf0i68k",
-				"updated": "20250522144659"
-			}
+				"updated": "20250617201440"
+			},
+			"Children": [
+				{
+					"Type": "NodeText",
+					"Data": "This is a "
+				},
+				{
+					"Type": "NodeTextMark",
+					"TextMarkType": "mark",
+					"TextMarkTextContent": "falsh"
+				},
+				{
+					"Type": "NodeText",
+					"Data": " card. (Properties: custom-riff-decks)"
+				}
+			]
 		},
 		{
 			"ID": "20250512161607-wjqo12o",
+			"Type": "NodeList",
+			"ListData": {},
+			"Properties": {
+				"custom-riff-decks": "20230218211946-2kw8jgx",
+				"id": "20250512161607-wjqo12o",
+				"updated": "20250618125621"
+			},
+			"Children": [
+				{
+					"ID": "20250618125559-b8femn6",
+					"Type": "NodeListItem",
+					"ListData": {
+						"BulletChar": 42,
+						"Marker": "Kg=="
+					},
+					"Properties": {
+						"id": "20250618125559-b8femn6",
+						"updated": "20250618125621"
+					},
+					"Children": [
+						{
+							"ID": "20250618125559-wpstggj",
+							"Type": "NodeParagraph",
+							"Properties": {
+								"id": "20250618125559-wpstggj",
+								"updated": "20250618125614"
+							},
+							"Children": [
+								{
+									"Type": "NodeText",
+									"Data": "This is a flash card (List type)"
+								}
+							]
+						},
+						{
+							"ID": "20250618125605-y8cm9yg",
+							"Type": "NodeList",
+							"ListData": {},
+							"Properties": {
+								"id": "20250618125605-y8cm9yg",
+								"updated": "20250618125621"
+							},
+							"Children": [
+								{
+									"ID": "20250618125605-fqwl8ki",
+									"Type": "NodeListItem",
+									"ListData": {
+										"BulletChar": 42,
+										"Marker": "Kg=="
+									},
+									"Properties": {
+										"id": "20250618125605-fqwl8ki",
+										"updated": "20250618125621"
+									},
+									"Children": [
+										{
+											"ID": "20250618125605-x227kpp",
+											"Type": "NodeParagraph",
+											"Properties": {
+												"id": "20250618125605-x227kpp",
+												"updated": "20250618125621"
+											},
+											"Children": [
+												{
+													"Type": "NodeText",
+													"Data": "answer"
+												}
+											]
+										}
+									]
+								}
+							]
+						}
+					]
+				}
+			]
+		},
+		{
+			"ID": "20250619160745-z0o52jx",
 			"Type": "NodeParagraph",
 			"Properties": {
-				"id": "20250512161607-wjqo12o",
-				"updated": "20250512161607"
+				"id": "20250619160745-z0o52jx",
+				"updated": "20250619160745"
+			}
+		},
+		{
+			"ID": "20250619160746-6njrpbf",
+			"Type": "NodeCodeBlock",
+			"IsFencedCodeBlock": true,
+			"Properties": {
+				"id": "20250619160746-6njrpbf",
+				"style": "line-height: 28px;",
+				"updated": "20250619160759"
+			},
+			"Children": [
+				{
+					"Type": "NodeCodeBlockFenceOpenMarker",
+					"Data": "```"
+				},
+				{
+					"Type": "NodeCodeBlockFenceInfoMarker",
+					"CodeBlockInfo": "cnVzdA=="
+				},
+				{
+					"Type": "NodeCodeBlockCode",
+					"Data": "let rust = \"Hello world!\"\n"
+				},
+				{
+					"Type": "NodeCodeBlockFenceCloseMarker",
+					"Data": "```"
+				}
+			]
+		},
+		{
+			"ID": "20250624150748-3u7nbr1",
+			"Type": "NodeParagraph",
+			"Properties": {
+				"id": "20250624150748-3u7nbr1",
+				"updated": "20250625103010"
+			},
+			"Children": [
+				{
+					"Type": "NodeText",
+					"Data": "麦当劳的中薯条（Medium French Fries）热量约为320-340大卡（具体数值可能因地区和配方略有差异）。中薯条的重量通常在117克左右，主要成分为土豆、植物油和盐。其中，脂肪含量较高，约占总热量的40%-50%。 \n如果你对热量摄入有严格要求，建议适量食用或选择其他低热量选项。"
+				}
+			]
+		},
+		{
+			"ID": "20250624172637-x1jh6x6",
+			"Type": "NodeParagraph",
+			"Properties": {
+				"id": "20250624172637-x1jh6x6",
+				"updated": "20250624172637"
 			}
 		}
 	]

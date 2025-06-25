@@ -1,6 +1,7 @@
-use crate::component::gutter::{GutterConfig, GutterType};
+use crate::model::utils;
 use ratatui::layout::Rect;
 use std::default::Default;
+use std::fmt;
 use std::num::NonZeroUsize;
 use std::str::FromStr;
 use strum::EnumString;
@@ -23,7 +24,7 @@ impl std::fmt::Display for DocumentId {
         f.write_fmt(format_args!("{}", self.0))
     }
 }
-pub struct DocumentModel {
+pub(crate) struct DocumentModel {
     pub(crate) id: DocumentId,
     pub lines: Vec<DocumentLine>,
     pub area: Rect,
@@ -40,35 +41,24 @@ enum InLineMarkType {
     BlockRef,
     A,
 }
-#[derive(Clone)]
-struct InLineItem {
-    item_type: InLineMarkType, // 行内元素类型
-    content: String,           // 展示内容
-    link: Option<String>,      // 转跳
+#[derive(Clone, Default)]
+pub(crate) struct InLineItem {
+    item_type: InLineMarkType,  // 行内元素类型
+    pub(crate) content: String, // 展示内容
+    link: Option<String>,       // 转跳
     /// 对应 theme.toml 中的配置
     style: Option<String>,
 }
-
-#[derive(Clone)]
-struct DocumentLine {
+#[derive(Clone, Default)]
+pub(crate) struct DocumentLine {
     ///    行内需要渲染的元素
-    content: Vec<InLineItem>,
+    pub(crate) content: Vec<InLineItem>,
     /// siyuan 对应的节点类型
     node_type: NodeType,
     /// 元素外层可能是 quote 或者其他超级块
     container: NodeType,
     /// 缩进.List类型的元素在换行时需要保持缩进
     indent_width: usize,
-}
-impl Default for DocumentLine {
-    fn default() -> Self {
-        DocumentLine {
-            content: vec![],
-            node_type: Default::default(),
-            container: Default::default(),
-            indent_width: 0,
-        }
-    }
 }
 impl DocumentLine {
     fn default_with_item(item: InLineItem) -> DocumentLine {
@@ -117,7 +107,7 @@ impl DocumentModel {
         }
     }
 
-    ///  TOOD 如果有嵌入块查询结果,需要考虑添加缩进
+    /// TOOD 如果有嵌入块查询结果,需要考虑添加缩进
     fn create_doc_title_lines(&self, root: &Node) -> Vec<DocumentLine> {
         let title = root
             .properties
@@ -142,33 +132,48 @@ impl DocumentModel {
     }
 
     fn create_paragraph_lines(&mut self, node: Node) {
+        let (items, total_width) = self.create_paragraph_inline_items(&node);
+        let lines = DocumentModel::split_item_to_document_lines(items, total_width);
+    }
+    fn create_list_items(&self,node:&Node){
+        
+    }
+    /// 解析ParagraphNode同时获取对应的
+    fn create_paragraph_inline_items(&mut self, node: &Node) -> (Vec<InLineItem>, usize) {
         let mut items: Vec<InLineItem> = vec![];
+        let mut total_width: usize = 0;
         for child in node.children.iter() {
-            let item = match child.node_type {
+            let (item, width) = match child.node_type {
                 NodeType::NodeTextMark => self.create_node_text_mark(child),
                 NodeType::NodeText => self.create_node_text(child),
                 _ => continue,
             };
             items.push(item);
+            total_width += width
         }
-        self.wrap_lines_into_document(&node, items);
+        (items, total_width)
     }
-
-    fn create_node_text(&mut self, node: &Node) -> InLineItem {
-        let content = node.data.clone().unwrap_or_default();
-        InLineItem {
+    fn create_node_text(&mut self, node: &Node) -> (InLineItem, usize) {
+        let content = node
+            .data
+            .clone()
+            .unwrap_or_default()
+            .replace('\u{200b}', "");
+        let item = InLineItem {
             item_type: InLineMarkType::Default,
             content,
             link: None,
             style: None,
-        }
+        };
+        let width = item.content.width();
+        (item, width)
     }
-    fn create_node_text_mark(&mut self, node: &Node) -> InLineItem {
+    fn create_node_text_mark(&mut self, node: &Node) -> (InLineItem, usize) {
         let content = node
             .text_mark_text_content
             .clone()
             .unwrap_or_default()
-            .clone();
+            .replace('\u{200b}', "");
         let mark_type = node.text_mark_type.clone().unwrap_or_default().clone();
         let enum_mark_type = InLineMarkType::from_str(&mark_type).unwrap_or_default();
         let mut item = InLineItem {
@@ -188,245 +193,173 @@ impl DocumentModel {
                 item.link = Some(block_ref);
             }
             InLineMarkType::A => {
+                // http 超链接
                 let web_link = node.text_mark_a_href.clone().unwrap_or_default();
                 item.link = Some(web_link);
                 item.style = Some("node.text.weblink".to_string())
             }
             _ => {}
         }
-        item
+        let width = item.content.width();
+        (item, width)
     }
-    /// 将一个 Block 内的元素按显示宽度分割成多行
-    /// TODO List 等换行需要注意缩进
-    fn wrap_lines_into_document(&mut self, node: &Node, items: Vec<InLineItem>) {
-        let mut lines: Vec<DocumentLine> = vec![];
-        let available_width = self.area.width as usize;
 
-        // 表示当前正在处理的行
-        let mut last_line: Option<&DocumentLine> = self.lines.last();
-
-        let mut current_line = DocumentLine::default();
+    /// 将传入的 InLineItem 转换为多个可以直接渲染的 DocumentLine
+    /// TODO List 类型的字段
+    /// TODO Container 属性
+    pub fn split_item_to_document_lines(
+        content: Vec<InLineItem>,
+        line_width: usize,
+    ) -> Vec<DocumentLine> {
+        let mut result = Vec::new();
+        let mut current_line = Vec::new();
         let mut current_width = 0;
-        for item in items {
-            let item_width = self.calculate_item_width(&item);
-
-            // 处理显式换行（原始文本包含\n）
-            if let Some(pos) = item.content.find('\n') {
-                let (before, after) = item.content.split_at(pos);
-                let before_item = InLineItem {
-                    content: before.to_string(),
-                    ..item.clone()
-                };
-
-                // TODO 合并拆分的
-                //  这里的合并操作应该直接在函数内完成.因为可能需要拆分成好几行,而不是简单拆一次.
-                //  拆行的时候应该直接对长度做除法计算.而不是逐个字符计算  
-                self.merge_item_into_line(before_item);
-                // 处理 before 的部分
-                let wrap_result =
-                    self.wrap_line_by_length(self.lines.clone().last().unwrap(), self.area.width);
-                // 处理 after 的部分
-                // TODO 同样调用函数去生成行
-                current_line.content.push(InLineItem {
-                    content: after[1..].to_string(), // 跳过\n
-                    ..item.clone()
-                });
-                current_width += self.calculate_text_width(&after[1..]);
+        for item in content.into_iter() {
+            if item.content.contains("/n") && !current_line.is_empty() {
+                result.push(DocumentLine::default_with_items(current_line));
+                current_line = Vec::new();
+            }
+            let item_width = utils::calculate_item_width(&item);
+            // 如果当前行加上这个项目不会超出行宽限制
+            if current_width + item_width <= line_width {
+                current_line.push(item);
+                current_width += item_width;
                 continue;
             }
+            let remaining_width = line_width - current_width;
+            let (first_part, second_part) =
+                DocumentModel::split_inline_item(&item, remaining_width);
 
-            // 计算 current_line 是否超出长度限制
-            if current_width + item_width > available_width {
-                // 尝试在单词边界分割
-                if let Some((head, tail)) =
-                    self.split_item_at_boundary(&item, available_width - current_width)
-                {
-                    let head_line = DocumentLine {
-                        content: vec![head],
-                        node_type: node.node_type,
-                        container: Default::default(),
-                        indent_width: 0,
-                    };
-                    self.lines.push(head_line);
-                    let tail_line = DocumentLine::default_with_item(tail.clone());
-                    current_width = self.calculate_item_width(&tail);
-                } else {
-                    // 强制换行
-                    self.lines.push(current_line);
-                    current_line = DocumentLine {
-                        content: vec![item],
-                        node_type: node.node_type.clone(),
-                        container: Default::default(),
-                        indent_width: 0,
-                    };
-                    current_width = item_width;
-                }
-            } else {
-                current_line.content.push(item);
-                current_width += item_width;
+            current_line.push(first_part);
+            result.push(DocumentLine::default_with_items(current_line));
+
+            current_width = utils::calculate_item_width(&second_part);
+            current_line = vec![second_part];
+            while current_width > line_width {
+                let second_part = current_line.first().unwrap().clone();
+                let (sub_first_part, sub_second_part) =
+                    DocumentModel::split_inline_item(&second_part.clone(), line_width);
+                let new_line = vec![sub_first_part];
+                result.push(DocumentLine {
+                    content: new_line,
+                    node_type: Default::default(),
+                    container: Default::default(),
+                    indent_width: 0,
+                });
+
+                current_line = vec![sub_second_part];
+                current_width = utils::calculate_items_width(&current_line);
             }
         }
         // 添加最后一行
-        if !current_line.content.is_empty() {
-            self.lines.push(current_line);
-        }
-    }
-
-    /// 将 行级元素放入 Item
-    fn merge_item_into_line(&mut self, item: InLineItem) {
-        if let Some(last_line) = self.lines.last_mut() {
-            // 将 item 添加到最后一个 DocumentLine 的 content 中
-            last_line.content.push(item);
-        } else {
-            // 如果没有行，则创建一个新行并添加 item
-            let new_line = DocumentLine {
-                content: vec![item],
-                node_type: NodeType::NodeParagraph, // 默认段落类型
-                container: NodeType::Default,       // 默认容器
+        if !current_line.is_empty() {
+            result.push(DocumentLine {
+                content: current_line,
+                node_type: Default::default(),
+                container: Default::default(),
                 indent_width: 0,
-            };
-            self.lines.push(new_line);
+            });
         }
+        result
     }
 
-    /// 针对已经生成的 DocumentLine 判断是否需要进行分行
-    /// 如果需要则返回分割后的两个 DocumentLine
-    fn wrap_line_by_length(
-        &mut self,
-        line: &DocumentLine,
-        available_width: u16,
-    ) -> Option<(DocumentLine, DocumentLine)> {
-        let usize_width = usize::from(available_width);
-        let current_width = self.calculate_line_width(&line);
-        if current_width <= usize_width {
-            return None;
+    fn split_inline_item(item: &InLineItem, max_width: usize) -> (InLineItem, InLineItem) {
+        let content = &item.content;
+        let split_pos = DocumentModel::find_best_split_position(content, max_width);
+        let first_part = InLineItem {
+            item_type: item.item_type.clone(),
+            content: content[..split_pos].to_string(),
+            link: None,
+            style: item.style.clone(),
+        };
+        let second_part = InLineItem {
+            item_type: item.item_type.clone(),
+            content: content[split_pos..].to_string(),
+            link: None,
+            style: item.style.clone(),
+        };
+        (first_part, second_part)
+    }
+    fn find_best_split_position(content: &str, max_display_width: usize) -> usize {
+        if content.is_empty() {
+            return 0;
         }
 
-        // 寻找最佳分割位置
-        let mut best_split_index = None;
-        let mut accumulated_width = 0;
-        let mut last_space_position = None;
+        let mut current_display_width = 0;
+        let mut last_space_pos = None;
+        let mut last_safe_boundary = 0;
+        let mut has_chinese = false;
+        let mut last_newline_pos = None;
 
-        // 寻找最佳分割点- 行内元素索引 和 字符索引(itemIndex,charIndex)
-        for (i, item) in line.content.iter().enumerate() {
-            let item_width = self.calculate_item_width(item);
-            accumulated_width += item_width;
-
-            // 记录最后一个空格位置（单词边界）
-            if let Some(space_pos) = item.content.rfind(' ') {
-                last_space_position = Some((i, space_pos));
+        for (i, c) in content.char_indices() {
+            // 首先检查换行符（优先级最高）
+            if c == '\n' {
+                // 记录换行符位置，但不立即返回,因为换行符前的内容可能超过最大宽度
+                last_newline_pos = Some(i);
             }
 
-            // 找到第一个超过可用宽度的位置
-            if accumulated_width > usize_width {
-                // 优先在最后一个空格处分隔
-                if let Some((item_idx, char_idx)) = last_space_position {
-                    best_split_index = Some((item_idx, char_idx + 1)); // 在空格后分割
-                } else {
-                    // 没有空格，在当前项目中间分割
-                    best_split_index = Some((i, 0));
-                }
-                break;
+            // 检测是否中文字符
+            if !has_chinese && ('\u{4e00}'..='\u{9fff}').contains(&c) {
+                has_chinese = true;
             }
-        }
 
-        // (InLineItem, 以及 Item 中的字符位置)
-        let Some((split_item_idx, split_char_idx)) = best_split_index else {
-            return None;
-        };
+            let char_width = c.width().unwrap_or(1);
+            let exceeds_width = current_display_width + char_width > max_display_width;
 
-        // 基于 item_idx 分割内容
-        let mut first_part = line.content[..=split_item_idx].to_vec(); // ..= 包含右边界
-        let mut second_part = if split_item_idx + 1 < line.content.len() {
-            line.content[split_item_idx + 1..].to_vec() // 剩余元素
-        } else {
-            Vec::new()
-        };
+            // 优先处理换行符（如果存在且未超宽）
+            if let Some(newline_pos) = last_newline_pos {
+                // 换行符位置是安全边界
+                let safe_newline_pos = newline_pos + 1; // 在换行符后拆分
 
-        // 基于 split_char_idx 分割内容
-        if split_char_idx > 0 {
-            if let Some(split_item) = first_part.last_mut() {
-                if split_char_idx < split_item.content.len() {
-                    let remaining_text = split_item.content.split_off(split_char_idx);
-                    second_part.insert(
-                        0,
-                        InLineItem {
-                            item_type: split_item.item_type.clone(),
-                            content: remaining_text,
-                            link: split_item.link.clone(),
-                            style: split_item.style.clone(),
-                        },
-                    );
+                // 确保换行符前的内容不超过最大宽度
+                if safe_newline_pos <= last_safe_boundary || !exceeds_width {
+                    return safe_newline_pos;
                 }
             }
-        }
 
-        // 创建新行
-        let first_line = DocumentLine {
-            content: first_part,
-            node_type: line.node_type.clone(),
-            container: line.container.clone(),
-            indent_width: 0,
-        };
-
-        let second_line = DocumentLine {
-            content: second_part,
-            node_type: line.node_type.clone(),
-            container: line.container.clone(),
-            indent_width: 0,
-        };
-
-        Some((first_line, second_line))
-    }
-
-    fn calculate_text_width(&self, text: &str) -> usize {
-        text.width()
-    }
-    fn calculate_line_width(&self, line: &DocumentLine) -> usize {
-        let mut width = 0;
-        for item in line.content.iter() {
-            width += item.content.width();
-        }
-        width
-    }
-
-    fn calculate_item_width(&self, item: &InLineItem) -> usize {
-        item.content.width()
-    }
-    /// TODO 在单词边界处智能分割行内元素
-    ///     遍历方式可以改成从后往前遍历.如果小于直接返回. 如果大于找到第一个空格返回
-    fn split_item_at_boundary(
-        &self,
-        item: &InLineItem,
-        max_width: usize,
-    ) -> Option<(InLineItem, InLineItem)> {
-        let mut accum = 0;
-        let mut split_pos = None;
-
-        // 查找最后一个可分割的空格位置
-        for (i, c) in item.content.char_indices() {
-            accum += c.width().unwrap_or(1);
-            // TODO 如果超出位置刚好是空格
-            if c.is_whitespace() && accum <= max_width {
-                split_pos = Some(i);
+            // 如果超宽且没有未处理的换行符
+            if exceeds_width {
+                // 如果有空格且不是中文文本，优先在空格处分隔
+                if let Some(space_pos) = last_space_pos.filter(|_| !has_chinese) {
+                    return space_pos + 1;
+                }
+                // 否则在当前安全边界处分隔
+                return last_safe_boundary;
             }
-            if accum > max_width {
-                break;
+
+            // 更新当前显示宽度
+            current_display_width += char_width;
+
+            // 仅非中文文本记录空格位置
+            if !has_chinese && c == ' ' {
+                last_space_pos = Some(i);
+            }
+
+            // 更新最后一个安全边界
+            last_safe_boundary = i + c.len_utf8();
+        }
+
+        // 处理文本末尾的换行符
+        if let Some(newline_pos) = last_newline_pos {
+            return newline_pos + 1;
+        }
+
+        content.len()
+    }
+}
+impl fmt::Display for DocumentModel {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        for (i, line) in self.lines.iter().enumerate() {
+            if i > 0 {
+                write!(f, "\n")?; // 行间换行
+            }
+
+            // 拼接行内所有内容
+            for item in &line.content {
+                write!(f, "{}", item.content)?;
             }
         }
-        split_pos.map(|pos| {
-            let (head, tail) = item.content.split_at(pos);
-            (
-                InLineItem {
-                    content: head.trim_end().to_string(),
-                    ..item.clone()
-                },
-                InLineItem {
-                    content: tail.trim_start().to_string(),
-                    ..item.clone()
-                },
-            )
-        })
+        Ok(())
     }
 }
 impl InLineItem {
@@ -439,50 +372,83 @@ impl InLineItem {
         }
     }
 }
-
-fn create_title_block(root: Node, handler: impl FnOnce(&String)) {
-    let title = root.properties.as_ref().and_then(|map| {
-        // 获取title并构建Paragraph
-        map.get("title").map(|title| {
-            handler(title);
-        })
-    });
-}
 #[cfg(test)]
 mod test {
-    use crate::model::document_model::{DocumentId, DocumentLine, DocumentModel};
+    use crate::model::document_model::{DocumentId, DocumentModel};
     use ratatui::layout::Rect;
     use syservice::lute::node::Node;
 
-    fn create_empty_model_with_20x20() -> DocumentModel {
-        let rect = Rect::new(0, 0, 20, 20);
+    fn create_empty_model_with_50x50() -> DocumentModel {
+        let rect = Rect::new(0, 0, 50, 50);
         DocumentModel {
             id: DocumentId::default(),
             lines: vec![],
             area: rect,
         }
     }
-
+    fn get_node_by_node_id(node_id: &str) -> Node {
+        let mut root_node = syservice::test_utils::load_sy_test_file().unwrap_or_default();
+        let mut node: Node = Node::default();
+        for child in root_node.children.iter_mut() {
+            if child.clone().id.unwrap().eq(node_id) {
+                node = child.clone();
+                break;
+            }
+        }
+        node.set_node_type_for_tree();
+        node
+    }
     #[test]
     fn test_create_title_lines() {
-        let model = create_empty_model_with_20x20();
+        let model = create_empty_model_with_50x50();
         let root_node = syservice::test_utils::load_sy_test_file().unwrap_or_default();
-
         let title_lines = model.create_doc_title_lines(&root_node);
         assert_eq!(title_lines.len(), 3);
     }
     #[test]
     fn test_create_paragraph_lines() {
-        let mut model = create_empty_model_with_20x20();
-        let mut root_node = syservice::test_utils::load_sy_test_file().unwrap_or_default();
-        let mut node: Node = Node::default();
-        for child in root_node.children.iter_mut() {
-            if child.clone().id.unwrap().eq("20250512161513-8hypgbv") {
-                node = child.clone()
-            }
-        }
-        node.set_node_type_for_tree();
-        model.create_paragraph_lines(node);
-        assert_eq!("", "");
+        let node_id = "20250512161513-8hypgbv";
+        let node: Node = get_node_by_node_id(node_id);
+        let mut model = create_empty_model_with_50x50();
+
+        assert_eq!("NodeParagraph", node.type_str);
+        let (items, total_width) = model.create_paragraph_inline_items(&node);
+        assert!(!items.is_empty());
+        assert!(total_width > 0);
+        let doc_lines =
+            DocumentModel::split_item_to_document_lines(items.clone(), model.area.width as usize);
+        assert!(!doc_lines.is_empty());
+        let m1 = DocumentModel {
+            id: Default::default(),
+            lines: doc_lines,
+            area: Default::default(),
+        };
+        println!("{}", m1);
+    }
+    #[test]
+    fn test_paragraph_with_longtext_and_linebreak() {
+        let doc_id = "20250624150748-3u7nbr1";
+        let node: Node = get_node_by_node_id(doc_id);
+        let mut model = create_empty_model_with_50x50();
+
+        assert_eq!("NodeParagraph", node.type_str);
+        let (items, total_width) = model.create_paragraph_inline_items(&node);
+        assert!(!items.is_empty());
+        assert!(total_width > 0);
+        let doc_lines =
+            DocumentModel::split_item_to_document_lines(items.clone(), model.area.width as usize);
+        assert!(!doc_lines.is_empty());
+        let m1 = DocumentModel {
+            id: Default::default(),
+            lines: doc_lines,
+            area: Default::default(),
+        };
+        println!("{}", m1);
+    }
+
+    #[test]
+    fn test_list_block() {
+        let node_id = "20250512161441-kf86s1d";
+        let node: Node = get_node_by_node_id(node_id);
     }
 }
