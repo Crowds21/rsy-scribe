@@ -8,4 +8,8 @@ categories.workspace = true
 repository.workspace = true
 
 [dependencies]
+syservice = {path="../syservice"}
 slotmap="1.0.7"
+strum = { version = "0.27.1", features = ["derive"] }
+unicode-width = "0.2.0"
+ratatui = "0.26"

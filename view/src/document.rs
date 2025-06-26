@@ -1,6 +1,3 @@
-use crate::component::block::doc::create_tui_element;
-use crate::component::block::{BlockComponent, RenderedBlock};
-use crate::model::utils;
 use ratatui::layout::Rect;
 use std::default::Default;
 use std::fmt;
@@ -9,11 +6,12 @@ use std::str::FromStr;
 use strum::EnumString;
 use syservice::lute::node::{Node, NodeType};
 use unicode_width::{UnicodeWidthChar, UnicodeWidthStr};
+use crate::utils;
 
 /// uses NonZeroUsize so Option<DocumentId> use a byte rather than two
 /// 用于应用内标识文档.
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
-pub struct DocumentId(NonZeroUsize);
+pub struct DocumentId(pub NonZeroUsize);
 
 impl Default for DocumentId {
     fn default() -> DocumentId {
@@ -21,13 +19,14 @@ impl Default for DocumentId {
         DocumentId(unsafe { NonZeroUsize::new_unchecked(1) })
     }
 }
-impl std::fmt::Display for DocumentId {
+impl fmt::Display for DocumentId {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.write_fmt(format_args!("{}", self.0))
     }
 }
-pub(crate) struct DocumentModel {
-    pub(crate) id: DocumentId,
+#[derive(Default)]
+pub struct DocumentModel {
+    pub id: DocumentId,
     pub lines: Vec<DocumentLine>,
     pub area: Rect,
 }
@@ -44,18 +43,18 @@ enum InLineMarkType {
     A,
 }
 #[derive(Clone, Default)]
-pub(crate) struct InLineItem {
+pub struct InLineItem {
     item_type: InLineMarkType,  // 行内元素类型
-    pub(crate) content: String, // 展示内容
+    pub content: String, // 展示内容
     link: Option<String>,       // 转跳
     /// 对应 theme.toml 中的配置
     style: Option<String>,
     line_break: bool,
 }
 #[derive(Clone, Default)]
-pub(crate) struct DocumentLine {
+pub struct DocumentLine {
     ///    行内需要渲染的元素
-    pub(crate) content: Vec<InLineItem>,
+    pub content: Vec<InLineItem>,
     /// siyuan 对应的节点类型
     node_type: NodeType,
     /// 是否为块内软换行
@@ -454,9 +453,9 @@ impl InLineItem {
 }
 #[cfg(test)]
 mod test {
-    use crate::model::document_model::{DocumentId, DocumentModel};
     use ratatui::layout::Rect;
     use syservice::lute::node::Node;
+    use crate::document::{DocumentId, DocumentModel};
 
     fn create_empty_model_with_50x50() -> DocumentModel {
         let rect = Rect::new(0, 0, 50, 50);

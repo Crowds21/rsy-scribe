@@ -10,7 +10,7 @@ use ratatui::{backend::CrosstermBackend, Terminal};
 use std::{io, panic};
 use tui::compositor::{Compositor, CompositorContext};
 use tui::job::JobQueue;
-use tui::model::editor_model::EditorModel;
+use view::editor::EditorModel;
 
 /// 应用后台
 pub struct Application {

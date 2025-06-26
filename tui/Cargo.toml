@@ -8,6 +8,7 @@ repository.workspace = true
 
 [dependencies]
 syservice = {path="../syservice"}
+view= {path="../view"}
 crossterm = "0.27.0"
 ropey = "1.6.1"
 ratatui = "0.26"

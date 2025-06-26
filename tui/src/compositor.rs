@@ -1,10 +1,10 @@
 // 参考 Helix 实现的 UI 调度器
 use crate::component::editor::EditorView;
 use crate::component::Component;
-use crate::model::editor_model::EditorModel;
 use crate::uiconfig::theme::Theme;
 use crossterm::event::{Event, KeyEvent, KeyEventKind};
 use ratatui::prelude::*;
+use view::editor::EditorModel;
 
 /// 回调
 pub type Callback = Box<dyn FnOnce(&mut Compositor, &mut CompositorContext)>;
@@ -23,6 +23,7 @@ pub struct Compositor {
 /// 全局状态管理
 pub struct CompositorContext {
     pub theme: Theme,
+    // TODO 这里的 EditorModel 和 Application 中的有什么区别
     pub editor_model: EditorModel,
     pub scroll: Option<usize>,
 }

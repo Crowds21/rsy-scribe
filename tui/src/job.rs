@@ -1,10 +1,9 @@
-use std::future::Future;
 use crate::compositor::Compositor;
 use once_cell::sync::OnceCell;
 use std::ops::Deref;
 use std::sync::OnceLock;
 use tokio::sync::mpsc::{self, Receiver, Sender};
-use crate::model::editor_model::EditorModel;
+use view::editor::EditorModel;
 
 type Callback = Box<dyn FnOnce(&mut Compositor) + Send + 'static>;
 

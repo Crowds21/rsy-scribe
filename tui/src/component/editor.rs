@@ -1,3 +1,4 @@
+use std::collections::BTreeMap;
 use super::*;
 use crate::component::block::{doc, BlockComponent, RenderedBlock};
 use crate::component::gutter::{render_gutter, GutterConfig, GutterType};
@@ -11,30 +12,32 @@ use ratatui::{
     widgets::{Block, Borders, Paragraph},
     Frame,
 };
-use syservice::lute::node::Node;
 
 pub const ID: &str = "editor-view";
-pub struct EditorView<'a> {
+pub struct EditorView {
     cursor_position: Position,
     pub gutter_area: Rect,
     pub content_area: Rect,
-    pub document: Option<Node>,
-    pub doc_blocks: Vec<BlockComponent<'a>>,
     status_msg: Option<String>, // 状态消息
     count: Option<u32>,         // 模拟按键计数
     /// 侧边栏
     gutter: GutterConfig,
 }
-impl<'a> EditorView<'a> {
+impl<'a> Default for EditorView {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl<'a> EditorView {
+    
     pub fn new() -> Self {
         let status_msg = Some("status".to_string());
         let count = None;
         Self {
             cursor_position: Position::default(),
-            doc_blocks: Vec::new(),
             gutter_area: Rect::default(),
             content_area: Rect::default(),
-            document: None,
             status_msg,
             count,
             gutter: GutterConfig::default(),
@@ -66,16 +69,16 @@ impl<'a> EditorView<'a> {
     }
 
     pub fn render_document(
-        // 使用不同的生命周期名称 'b
         & mut self,
         frame: & mut Frame,
         content_area: Rect,
         cx: & mut CompositorContext,
     ) {
         let mut vec: Vec<RenderedBlock> = Vec::new();
-        if let Some(node) = &mut self.document {
-            vec = doc::create_document_blocks(node, cx);
-        }
+        // TODO
+        // if let Some(node) = &mut self.document {
+        //     vec = doc::create_document_blocks(node, cx);
+        // }
 
         let mut current_y = content_area.y;
         let mut remaining_height = content_area.height;
@@ -126,7 +129,7 @@ impl<'a> EditorView<'a> {
     }
 }
 
-impl Component for EditorView<'static> {
+impl Component for EditorView {
     fn render(&mut self, frame: &mut Frame, area: Rect, cx: &mut CompositorContext) {
         let area = frame.size();
 

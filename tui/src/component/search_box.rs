@@ -197,7 +197,7 @@ impl<'a> SearchBox {
                 let component = compositor.find::<EditorView>();
                 if let Some(editorView) = component {
                     if let Ok(node) = sy_nodes {
-                        editorView.document = Some(node);
+                        // TODO 保存打开的 Node
                         compositor.pop();
                         // TODO 这里还需要进行计算操作
                         //  每个元素组件占据多少 offset.
