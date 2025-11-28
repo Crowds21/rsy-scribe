@@ -17,14 +17,15 @@ pub enum EventResult {
 }
 /// UI 组合器
 pub struct Compositor {
-    layers: Vec<Box<dyn Component>>,
-    area: Rect,
+    pub layers: Vec<Box<dyn Component>>,
+    // 其他元素的 Area 应该都是通过这个 Rect
+    // 以固定的方式计算得出的.
+    pub area: Rect,
 }
 /// 全局状态管理
-pub struct CompositorContext {
+pub struct CompositorContext<'a> {
+    pub editor_model: &'a mut EditorModel,
     pub theme: Theme,
-    // TODO 这里的 EditorModel 和 Application 中的有什么区别
-    pub editor_model: EditorModel,
     pub scroll: Option<usize>,
 }
 
@@ -44,11 +45,7 @@ impl<'a> Compositor {
     }
 
     /// 传递事件. 顶层组件未处理的事件会传向下一层.
-    pub fn handle_event(
-        &mut self,
-        event: &Event,
-        cx: &mut CompositorContext,
-    ) -> bool {
+    pub fn handle_event(&mut self, event: &Event, cx: &mut CompositorContext) -> bool {
         let mut callbacks = Vec::new();
         for layer in self.layers.iter_mut().rev() {
             match layer.handle_event(event, cx) {
@@ -93,15 +90,5 @@ impl<'a> Compositor {
 
     pub fn resize(&mut self, area: Rect) {
         self.area = area;
-    }
-}
-
-impl CompositorContext {
-    pub fn new() -> Self {
-        Self {
-            theme: Theme::default(),
-            editor_model: EditorModel::default(),
-            scroll: None,
-        }
     }
 }

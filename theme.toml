@@ -1,22 +1,27 @@
 "editor.bg" = { bg = "bg" }
 "editor.font" = { fg = "fg" }
 
-"node.heading.title" = {fg="orange",modifier="bold"}
-"node.heading.h1" ={fg="orange"}
-"node.heading.h2" ={fg="orange"}
-"node.heading.h3" ={fg="orange"}
-"node.heading.h4" ={fg="orange"}
-"node.heading.h5" ={fg="orange"}
-"node.heading.h6" ={fg="orange"}
+# Block style
+"node.heading.title" = { fg = "orange", modifier = "bold" }
+"node.heading" = { fg = "orange" }
+#"node.heading.h2" = { fg = "orange" }
+#"node.heading.h3" = { fg = "orange" }
+#"node.heading.h4" = { fg = "orange" }
+#"node.heading.h5" = { fg = "orange" }
+#"node.heading.h6" = { fg = "orange" }
+"node.quote" = { bg = "gray" }
+#"node.list" = {fg="orange"}
 
-"node.blockquote" ={fg="gray"}
-"node.text.strong" = {fg="gray",modifier="bold"}
-"node.text.italic" = {fg="gray",modifier="italic"}
-"node.text.mark" = {bg="yellow"}
-"node.text.blockref" ={fg="yellow"}
-"node.text.weblink" ={fg="blue"}
-"node.text.mathblock" ={fg="yellow"}
-"node.text.code" ={fg="yellow"}
+# InLineItem style
+"node.blockquote" = { fg = "gray" }
+"node.text.strong" = { fg = "gray", modifier = "bold" }
+"node.text.italic" = { fg = "gray", modifier = "italic" }
+"node.text.mark" = { bg = "yellow" }
+"node.text.blockref" = { fg = "yellow" }
+"node.text.weblink" = { fg = "blue" }
+"node.text.mathblock" = { fg = "yellow" }
+"node.text.code" = { fg = "yellow" }
+"node.text.tag" = { fg = "yellow", modifier = "bold" }
 
 
 "ui.gutter" = { fg = "bg", bg_scale = 1.5 }

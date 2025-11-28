@@ -15,6 +15,7 @@ use ratatui::{
 use syservice;
 use tokio::sync::mpsc::Sender;
 use unicode_width::UnicodeWidthStr;
+use view::editor::EditorModel;
 
 pub const ID: &str = "search-box";
 /// 可搜索的文本框组件
@@ -193,15 +194,19 @@ impl<'a> SearchBox {
         };
         tokio::spawn(async move {
             let sy_nodes = syservice::file::load_json_node(&doc_path);
-            let open_document = move |compositor: &mut Compositor| {
+            let open_document = move |editor: &mut EditorModel, compositor: &mut Compositor| {
                 let component = compositor.find::<EditorView>();
-                if let Some(editorView) = component {
+                if let Some(editor_view) = component {
                     if let Ok(node) = sy_nodes {
-                        // TODO 保存打开的 Node
+                        // TODO 这个 area 是终端整体长度,不是编辑区域的大小
+                        //  Node 的渲染还是应该在 editor 中进行
+                        //  如果在 editor 中进行,需要注意如果 terminal size 不变化,
+                        //  那么就不需要重新展示
+                        // 
+                        let length = editor_view.content_area.width; 
+                        let document_id = editor.new_document(node, length);
+                        // editor_view.open_document(document_id);
                         compositor.pop();
-                        // TODO 这里还需要进行计算操作
-                        //  每个元素组件占据多少 offset.
-                        //  以便处理窗口滑动
                     }
                 }
             };
@@ -252,7 +257,7 @@ impl<'a> SearchBox {
 
                 EventResult::Consumed(None)
             }
-            crossterm::event::KeyCode::Up => {
+            KeyCode::Up => {
                 if !self.results.is_empty() {
                     self.selected_result = match self.selected_result {
                         Some(0) | None => Some(0),
@@ -261,7 +266,7 @@ impl<'a> SearchBox {
                 }
                 EventResult::Consumed(None)
             }
-            crossterm::event::KeyCode::Esc => {
+            KeyCode::Esc => {
                 let callback: crate::compositor::Callback = Box::new(
                     move |compositor: &mut Compositor, cx: &mut CompositorContext| {
                         compositor.pop();

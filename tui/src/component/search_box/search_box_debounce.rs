@@ -6,6 +6,7 @@ use std::time::Duration;
 use syservice::document;
 use tokio::task::JoinHandle;
 use tokio::time::Instant;
+use view::editor::EditorModel;
 
 const SEARCH_BOX_DEFAULT_DEBOUNCE: Duration = Duration::from_millis(500);
 /// 尾防抖
@@ -50,25 +51,26 @@ impl AsyncHook for SearchBoxDebounce {
         tokio::spawn(async move {
             let sy_blocks = document::search_doc_with_title(query).await;
 
-            let update_search_result = move |compositor: &mut Compositor| {
-                let component = compositor.find::<SearchBox>();
-                if let Some(search_box) = component {
-                    if let Ok(resp) = sy_blocks {
-                        search_box.results = resp
-                            .data
-                            .iter()
-                            .map(move |it| SearchResultItem {
-                                id: it.id.clone(),
-                                box_id: it.box_id.clone(),
-                                content: it.content.clone(),
-                                path: it.path.clone(),
-                                hpath: it.hpath.clone(),
-                            })
-                            .collect();
-                        search_box.selected_result = None;
+            let update_search_result =
+                move |_editor: &mut EditorModel, compositor: &mut Compositor| {
+                    let component = compositor.find::<SearchBox>();
+                    if let Some(search_box) = component {
+                        if let Ok(resp) = sy_blocks {
+                            search_box.results = resp
+                                .data
+                                .iter()
+                                .map(move |it| SearchResultItem {
+                                    id: it.id.clone(),
+                                    box_id: it.box_id.clone(),
+                                    content: it.content.clone(),
+                                    path: it.path.clone(),
+                                    hpath: it.hpath.clone(),
+                                })
+                                .collect();
+                            search_box.selected_result = None;
+                        }
                     }
-                }
-            };
+                };
             dispatch(update_search_result).await
         });
     }

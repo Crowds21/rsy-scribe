@@ -9,3 +9,4 @@ repository = "https://github.com/Crowds21/rsy-scribe"
 
 [workspace.dependencies]
 thiserror = "1.0"
+log = "0.4"

@@ -1,7 +1,6 @@
 use crate::application::Application;
 use crossterm::execute;
 use crossterm::terminal::{disable_raw_mode, LeaveAlternateScreen};
-use ratatui::backend::Backend;
 use std::io;
 use std::io::stdout;
 use std::panic::{set_hook, take_hook};

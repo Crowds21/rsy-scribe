@@ -1,4 +1,4 @@
-use ratatui::layout::Rect;
+use crate::utils;
 use std::default::Default;
 use std::fmt;
 use std::num::NonZeroUsize;
@@ -6,7 +6,6 @@ use std::str::FromStr;
 use strum::EnumString;
 use syservice::lute::node::{Node, NodeType};
 use unicode_width::{UnicodeWidthChar, UnicodeWidthStr};
-use crate::utils;
 
 /// uses NonZeroUsize so Option<DocumentId> use a byte rather than two
 /// 用于应用内标识文档.
@@ -24,11 +23,15 @@ impl fmt::Display for DocumentId {
         f.write_fmt(format_args!("{}", self.0))
     }
 }
+/// 文档对象.
 #[derive(Default)]
 pub struct DocumentModel {
     pub id: DocumentId,
+    /// 可直接渲染的一行
     pub lines: Vec<DocumentLine>,
-    pub area: Rect,
+    pub node: Option<Node>,
+    /// 最大长度
+    pub max_line_len: u16,
 }
 #[derive(Clone, Default, EnumString)]
 #[strum(serialize_all = "kebab-case")]
@@ -36,19 +39,32 @@ enum InLineMarkType {
     #[default]
     Default,
     Strong,
+    /// Italic
     Em,
     Mark,
     Code,
     BlockRef,
+    /// HyperLink
     A,
+    Tag,
+    /// UnderLine
+    U,
+    /// DeleteLine
+    S,
 }
 #[derive(Clone, Default)]
 pub struct InLineItem {
-    item_type: InLineMarkType,  // 行内元素类型
-    pub content: String, // 展示内容
-    link: Option<String>,       // 转跳
+    // TODO 如果一个块有多个样式,思源会通过字符串拼接,如"strong em"的方式来添加样式
+    //  这里需要参考 node_type_str 字段,自己做一次解析处理.
+    pub item_type: InLineMarkType,
+    // 行内元素类型
+    pub content: String,
+    // 展示内容
+    pub link: Option<String>,
+    // 转跳
     /// 对应 theme.toml 中的配置
-    style: Option<String>,
+    pub style: Option<String>,
+    /// Departed
     line_break: bool,
 }
 #[derive(Clone, Default)]
@@ -62,7 +78,7 @@ pub struct DocumentLine {
     /// 元素外层可能是 quote 或者其他超级块
     container: NodeType,
     /// 缩进.List类型的元素在换行时需要保持缩进
-    indent_width: usize,
+    indent_width: u16,
 }
 impl DocumentLine {
     fn default_with_item(item: InLineItem) -> DocumentLine {
@@ -86,31 +102,47 @@ impl DocumentLine {
     }
 }
 impl DocumentModel {
+    pub fn open(mut node: Node, id: DocumentId, line_len: u16) -> Self {
+        node.set_node_type_for_tree();
+        let mut doc = DocumentModel {
+            id,
+            lines: vec![],
+            node: Some(node),
+            max_line_len: line_len,
+        };
+        doc.parse_ast_root_node(line_len);
+        doc
+    }
     /// 将 SY AST 转换为  DocumentModel 的入口
-    fn parse_ast_root_node(&mut self, mut root_node: Node, document_id: DocumentId) {
-        self.id = document_id;
-        root_node.set_node_type_for_tree();
+    ///
+    /// TODO 当 resize 事件被触发时,需要重新计算
+    pub fn parse_ast_root_node(&mut self, width: u16) {
+        if self.node.is_none() {
+            return;
+        }
+        let mut root_node = self.node.take().unwrap();
         root_node.node_type = NodeType::from_str(&root_node.type_str).unwrap();
         let mut doc_title = self.create_doc_title_lines(&root_node);
         self.lines.append(&mut doc_title);
 
-        let line_width = self.area.width as usize;
         for child in root_node.children.iter_mut() {
-            self.parse_node_by_type(child, line_width);
+            let mut content_lines = self.parse_node_by_type(child);
+            self.lines.append(&mut content_lines);
         }
     }
-    fn parse_node_by_type(&mut self, node: &Node, available_width: usize) -> Vec<DocumentLine> {
+    fn parse_node_by_type(&mut self, node: &Node) -> Vec<DocumentLine> {
+        let available_width = self.max_line_len;
         let mut result: Vec<DocumentLine> = Vec::new();
         let mut lines = match node.node_type {
             // NodeType::Default => {}
             // NodeType::NodeDocument => {}
             NodeType::NodeParagraph => self.create_paragraph_block_lines(node, available_width),
-            // NodeType::NodeHeading => {}
+            NodeType::NodeHeading => self.create_head_block_lines(node, available_width),
             // NodeType::NodeHeadingC8hMarker => {}
             // NodeType::NodeThematicBreak => {}
             // NodeType::NodeBlockquote => {}
             // NodeType::NodeBlockquoteMarker => {}
-            NodeType::NodeList => self.create_list_block_lines(node),
+            NodeType::NodeList => self.create_list_block_lines(node, available_width),
             _ => Vec::new(),
         };
         result.append(&mut lines);
@@ -141,34 +173,90 @@ impl DocumentModel {
         let bottom_decoration_line = top_decoration_line.clone();
         vec![top_decoration_line, title_line, bottom_decoration_line]
     }
-
+    /// 创建标题块对应的行
+    fn create_head_block_lines(&mut self, node: &Node, line_width: u16) -> Vec<DocumentLine> {
+        // 处理逻辑与 paragraph block 一致
+        let items = self.create_inline_items(node);
+        let mut content_lines = DocumentModel::split_item_to_document_lines(items, line_width);
+        // TODO 标题块整体的颜色样式怎么处理 ? 渲染的时候手动添加?
+        //  行内元素的多级嵌套怎么处理
+        content_lines
+            .iter_mut()
+            .for_each(|it| it.node_type = NodeType::NodeHeading);
+        // 添加装饰线
+        if !content_lines.is_empty() {
+            let length = utils::calculate_line_width(content_lines.first().unwrap());
+            self.decorate_heading_line(node, length, &mut content_lines)
+        }
+        content_lines
+    }
+    fn decorate_heading_line(
+        &mut self,
+        node: &Node,
+        content_length: u16,
+        content: &mut Vec<DocumentLine>,
+    ) {
+        if node.heading_level.is_none() {
+            return;
+        }
+        /// vec<DocumentLine> 前后插入修饰线
+        fn add_decoration(
+            decorate: &str,
+            content: &mut Vec<DocumentLine>,
+            length: u16,
+            style: String,
+        ) {
+            let mut before_heading = DocumentLine::default();
+            let decoration_line = decorate.repeat(length as usize);
+            let decoration_item = InLineItem {
+                item_type: InLineMarkType::Strong,
+                content: decoration_line,
+                link: None,
+                style: None,
+                line_break: false,
+            };
+            before_heading.content = vec![decoration_item];
+            let after_heading = before_heading.clone();
+            content.insert(0, before_heading);
+            content.push(after_heading);
+        }
+        let level = node.heading_level.unwrap();
+        match level {
+            1 => add_decoration("=", content, content_length, "node.heading.h1".to_string()),
+            2 => add_decoration("=", content, content_length, "node.heading.h2".to_string()),
+            3 => add_decoration("=", content, content_length, "node.heading.h3".to_string()),
+            4 => add_decoration("~", content, content_length, "node.heading.h4".to_string()),
+            5 => add_decoration("-", content, content_length, "node.heading.h5".to_string()),
+            6 => add_decoration("-", content, content_length, "node.heading.h6".to_string()),
+            _ => {}
+        }
+    }
     fn create_paragraph_block_lines(
         &mut self,
         node: &Node,
-        available_width: usize,
+        available_width: u16,
     ) -> Vec<DocumentLine> {
-        let items = self.create_paragraph_inline_items(node);
+        let items = self.create_inline_items(node);
         let lines = DocumentModel::split_item_to_document_lines(items, available_width);
         lines
     }
-    fn create_list_block_lines(&mut self, node: &Node) -> Vec<DocumentLine> {
+    fn create_list_block_lines(&mut self, node: &Node, line_width: u16) -> Vec<DocumentLine> {
         let mut lines: Vec<DocumentLine> = Vec::new();
         // TODO 这里需要做层级的计算
-        let line_width = self.area.width as usize;
         for child in node.children.iter() {
             let mut temp_result = self.crate_list_iterators(child, line_width);
             lines.append(&mut temp_result);
         }
         lines
     }
-    fn crate_list_iterators(&mut self, node: &Node, available_width: usize) -> Vec<DocumentLine> {
+    fn crate_list_iterators(&mut self, node: &Node, available_width: u16) -> Vec<DocumentLine> {
         // TODO 这里返回的是 ListItem 中等待展示的Lines
         //  所以只需要对第一行插入BulletChar. 其他行插入等量的空格符
         //  但是这里没法考虑多级缩进的问题
         //  否则就需要在创建 Paragraph 前就获取到缩进,并且知道是第几层缩进
         let mut lines: Vec<DocumentLine> = Vec::new();
         let temp_result = match node.node_type {
-            NodeType::NodeList => self.create_list_block_lines(node),
+            NodeType::NodeList => self.create_list_block_lines(node, available_width),
             NodeType::NodeListItem => self.create_list_item_block(node, available_width),
             NodeType::NodeParagraph => self.create_paragraph_block_lines(node, available_width),
             _ => Vec::new(),
@@ -176,7 +264,7 @@ impl DocumentModel {
         lines = temp_result;
         lines
     }
-    fn create_list_item_block(&mut self, node: &Node, available_width: usize) -> Vec<DocumentLine> {
+    fn create_list_item_block(&mut self, node: &Node, available_width: u16) -> Vec<DocumentLine> {
         let mut result: Vec<DocumentLine> = Vec::new();
         for child in node.children.iter() {
             let mut temp = self.crate_list_iterators(child, available_width);
@@ -211,10 +299,10 @@ impl DocumentModel {
         }
         result
     }
-    /// 解析ParagraphNode同时获取对应的
-    fn create_paragraph_inline_items(&mut self, node: &Node) -> Vec<InLineItem> {
+    /// 解析行内元素
+    fn create_inline_items(&mut self, node: &Node) -> Vec<InLineItem> {
         let mut items: Vec<InLineItem> = vec![];
-        let mut total_width: usize = 0;
+        let mut total_width: u16 = 0;
         for child in node.children.iter() {
             let (item, width) = match child.node_type {
                 NodeType::NodeTextMark => self.create_node_text_mark(child),
@@ -226,7 +314,7 @@ impl DocumentModel {
         }
         items
     }
-    fn create_node_text(&mut self, node: &Node) -> (InLineItem, usize) {
+    fn create_node_text(&mut self, node: &Node) -> (InLineItem, u16) {
         let content = node
             .data
             .clone()
@@ -240,9 +328,9 @@ impl DocumentModel {
             line_break: false,
         };
         let width = item.content.width();
-        (item, width)
+        (item, width as u16)
     }
-    fn create_node_text_mark(&mut self, node: &Node) -> (InLineItem, usize) {
+    fn create_node_text_mark(&mut self, node: &Node) -> (InLineItem, u16) {
         let content = node
             .text_mark_text_content
             .clone()
@@ -273,10 +361,13 @@ impl DocumentModel {
                 item.link = Some(web_link);
                 item.style = Some("node.text.weblink".to_string())
             }
+            InLineMarkType::Tag => item.style = Some("node.text.tag".to_string()),
+            InLineMarkType::U => {}
+            InLineMarkType::S => {}
             _ => {}
         }
         let width = item.content.width();
-        (item, width)
+        (item, width as u16)
     }
 
     /// 将传入的 InLineItem 转换为多个可以直接渲染的 DocumentLine
@@ -286,12 +377,11 @@ impl DocumentModel {
     /// TODO List 类型的字段
     pub fn split_item_to_document_lines(
         content: Vec<InLineItem>,
-        line_width: usize,
+        line_width: u16,
     ) -> Vec<DocumentLine> {
         let mut result = Vec::new();
         let mut current_line = Vec::new();
-        let mut current_width = 0;
-        let mut line_break = false;
+        let mut current_width: u16 = 0;
         for item in content.into_iter() {
             let item_width = utils::calculate_item_width(&item);
             // 如果当前行加上这个项目不会超出行宽限制
@@ -338,19 +428,19 @@ impl DocumentModel {
         result
     }
 
-    fn split_inline_item(item: &InLineItem, max_width: usize) -> (InLineItem, InLineItem) {
+    fn split_inline_item(item: &InLineItem, max_width: u16) -> (InLineItem, InLineItem) {
         let content = &item.content;
         let (split_pos, line_break) = DocumentModel::find_best_split_position(content, max_width);
         let first_part = InLineItem {
             item_type: item.item_type.clone(),
-            content: content[..split_pos].to_string(),
+            content: content[..split_pos as usize].to_string(),
             link: None,
             style: item.style.clone(),
             line_break: false,
         };
         let second_part = InLineItem {
             item_type: item.item_type.clone(),
-            content: content[split_pos..].to_string(),
+            content: content[split_pos as usize..].to_string(),
             link: None,
             style: item.style.clone(),
             line_break,
@@ -358,7 +448,7 @@ impl DocumentModel {
         (first_part, second_part)
     }
     /// 返回换行标识,以及当前行是否是因为块内换行符导致的换行
-    fn find_best_split_position(content: &str, max_display_width: usize) -> (usize, bool) {
+    fn find_best_split_position(content: &str, max_display_width: u16) -> (u16, bool) {
         let mut break_line = false;
         if content.is_empty() {
             return (0, break_line);
@@ -382,7 +472,7 @@ impl DocumentModel {
                 has_chinese = true;
             }
 
-            let char_width = c.width().unwrap_or(1);
+            let char_width = c.width().unwrap_or(1) as u16;
             let exceeds_width = current_display_width + char_width > max_display_width;
 
             // 优先处理换行符（如果存在且未超宽）
@@ -391,7 +481,7 @@ impl DocumentModel {
                                                         // 确保换行符前的内容不超过最大宽度
                 if safe_newline_pos <= last_safe_boundary || !exceeds_width {
                     break_line = true;
-                    return (safe_newline_pos, break_line);
+                    return (safe_newline_pos as u16, break_line);
                 }
             }
 
@@ -399,10 +489,10 @@ impl DocumentModel {
             if exceeds_width {
                 // 如果有空格且不是中文文本，优先在空格处分隔
                 if let Some(space_pos) = last_space_pos.filter(|_| !has_chinese) {
-                    return (space_pos + 1, break_line);
+                    return (space_pos as u16 + 1, break_line);
                 }
                 // 否则在当前安全边界处分隔
-                return (last_safe_boundary, break_line);
+                return (last_safe_boundary as u16, break_line);
             }
 
             // 更新当前显示宽度
@@ -419,10 +509,10 @@ impl DocumentModel {
 
         // 处理文本末尾的换行符
         if let Some(newline_pos) = last_newline_pos {
-            return (newline_pos + 1, break_line);
+            return (newline_pos  as u16+ 1, break_line);
         }
 
-        (content.len(), break_line)
+        (content.len() as u16, break_line)
     }
 }
 impl fmt::Display for DocumentModel {
@@ -453,16 +543,17 @@ impl InLineItem {
 }
 #[cfg(test)]
 mod test {
+    use crate::document::{DocumentId, DocumentModel};
     use ratatui::layout::Rect;
     use syservice::lute::node::Node;
-    use crate::document::{DocumentId, DocumentModel};
 
     fn create_empty_model_with_50x50() -> DocumentModel {
         let rect = Rect::new(0, 0, 50, 50);
         DocumentModel {
             id: DocumentId::default(),
             lines: vec![],
-            area: rect,
+            node: None,
+            max_line_len: 0,
         }
     }
     fn get_node_by_node_id(node_id: &str) -> Node {
@@ -487,38 +578,40 @@ mod test {
     #[test]
     fn test_create_paragraph_lines() {
         let node_id = "20250512161513-8hypgbv";
+        let rect = Rect::new(0, 0, 50, 50);
         let node: Node = get_node_by_node_id(node_id);
         let mut model = create_empty_model_with_50x50();
 
         assert_eq!("NodeParagraph", node.type_str);
-        let items = model.create_paragraph_inline_items(&node);
+        let items = model.create_inline_items(&node);
         assert!(!items.is_empty());
-        let doc_lines =
-            DocumentModel::split_item_to_document_lines(items.clone(), model.area.width as usize);
+        let doc_lines = DocumentModel::split_item_to_document_lines(items.clone(), rect.width);
         assert!(!doc_lines.is_empty());
         let m1 = DocumentModel {
             id: Default::default(),
             lines: doc_lines,
-            area: Default::default(),
+            node: None,
+            max_line_len: 0,
         };
         println!("{}", m1);
     }
     #[test]
     fn test_paragraph_with_longtext_and_linebreak() {
+        let rect = Rect::new(0, 0, 50, 50);
         let doc_id = "20250624150748-3u7nbr1";
         let node: Node = get_node_by_node_id(doc_id);
         let mut model = create_empty_model_with_50x50();
 
         assert_eq!("NodeParagraph", node.type_str);
-        let items = model.create_paragraph_inline_items(&node);
+        let items = model.create_inline_items(&node);
         assert!(!items.is_empty());
-        let doc_lines =
-            DocumentModel::split_item_to_document_lines(items.clone(), model.area.width as usize);
+        let doc_lines = DocumentModel::split_item_to_document_lines(items.clone(), rect.width);
         assert!(!doc_lines.is_empty());
         let m1 = DocumentModel {
             id: Default::default(),
             lines: doc_lines,
-            area: Default::default(),
+            node: None,
+            max_line_len: 0,
         };
         println!("{}", m1);
     }
@@ -526,30 +619,35 @@ mod test {
     #[test]
     fn test_list_block() {
         let node_id = "20250512161441-kf86s1d";
+        let rect = Rect::new(0, 0, 50, 50);
         let node: Node = get_node_by_node_id(node_id);
 
         let mut model = create_empty_model_with_50x50();
-        let lines = model.create_list_block_lines(&node);
+        let lines = model.create_list_block_lines(&node, rect.width as u16);
         assert!(!lines.is_empty());
         let m1 = DocumentModel {
             id: Default::default(),
             lines,
-            area: Default::default(),
+            node: None,
+            max_line_len: 0,
         };
         println!("{}", m1);
     }
     #[test]
     fn test_list_with_inline_linebreak() {
         let node_id = "20250625152117-33q2b72";
+        let rect = Rect::new(0, 0, 50, 50);
         let node: Node = get_node_by_node_id(node_id);
 
         let mut model = create_empty_model_with_50x50();
-        let lines = model.create_list_block_lines(&node);
+
+        let lines = model.create_list_block_lines(&node, rect.width);
         assert!(!lines.is_empty());
         let m1 = DocumentModel {
             id: Default::default(),
             lines,
-            area: Default::default(),
+            node: None,
+            max_line_len: 0,
         };
         println!("{}", m1);
     }

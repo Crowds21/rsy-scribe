@@ -16,7 +16,6 @@ use view::editor::EditorModel;
 pub struct Application {
     terminal: Terminal<CrosstermBackend<io::Stdout>>,
     compositor: Compositor,
-    compositor_context: CompositorContext,
     editor_model: EditorModel,
     pub jobs: JobQueue, // 引用全局 JobQueue
 }
@@ -26,19 +25,19 @@ impl Application {
         execute!(stdout, EnterAlternateScreen).expect("Enter alternate screen error");
 
         let backend = CrosstermBackend::new(stdout);
-        let mut terminal = Terminal::new(backend).expect("terminal initialization failed");
-        let mut compositor = Compositor::new(terminal.size().unwrap());
+        let terminal = Terminal::new(backend).expect("terminal initialization failed");
+        let compositor = Compositor::new(terminal.size().unwrap());
         enable_raw_mode().expect("Enter raw mode error");
-        let mut cx = CompositorContext::new();
+        let editor_model = EditorModel::default();
         Self {
             terminal,
             compositor,
-            compositor_context: cx,
             jobs: JobQueue::new(),
-            editor_model: EditorModel::default(),
+            editor_model,
         }
     }
 
+    /// 主线程
     pub(crate) async fn run(&mut self) {
         let mut input_stream = crossterm::event::EventStream::new();
         use futures_util::StreamExt;
@@ -59,7 +58,13 @@ impl Application {
         }
     }
 
+    /// 事件处理
     async fn handle_terminal_events(&mut self, event: Event) {
+        let mut compositor_context = CompositorContext {
+            editor_model: &mut self.editor_model,
+            scroll: None,
+            theme: Default::default(),
+        };
         match event {
             Event::Resize(width, height) => {
                 self.terminal
@@ -68,27 +73,32 @@ impl Application {
                 let area = self.terminal.size().expect("couldn't get terminal size");
 
                 self.compositor.resize(area);
-
                 self.compositor
-                    .handle_event(&Event::Resize(width, height), &mut self.compositor_context);
+                    .handle_event(&Event::Resize(width, height), &mut compositor_context);
             }
             Event::Key(key) => {
                 if key.modifiers == KeyModifiers::CONTROL && key.code == KeyCode::Char('c') {
-                    self.exit_app();
+                    // self.exit_app();
+                    disable_raw_mode().expect("Disable raw mode before exit");
+                    execute!(self.terminal.backend_mut(), LeaveAlternateScreen).unwrap();
                 }
                 self.compositor
-                    .handle_event(&event, &mut self.compositor_context);
+                    .handle_event(&event, &mut compositor_context);
             }
             _ => {}
         }
     }
     /// 进行绘制
     pub async fn render(&mut self) {
+        let mut compositor_context = CompositorContext {
+            editor_model: &mut self.editor_model,
+            scroll: None,
+            theme: tui::uiconfig::theme::Theme::default(),
+        };
         // self.terminal.draw(pos).unwrap();
         self.terminal
             .draw(|f| {
-                self.compositor
-                    .render(f, f.size(), &mut self.compositor_context);
+                self.compositor.render(f, f.size(), &mut compositor_context);
             })
             .expect("rendering error");
     }

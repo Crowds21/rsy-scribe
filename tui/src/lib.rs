@@ -2,8 +2,9 @@ pub mod compositor;
 pub mod job;
 pub mod status;
 pub mod component;
-mod uiconfig;
+pub mod uiconfig;
 mod debounce;
+mod adaptor;
 
 #[cfg(test)]
 mod tests {
