@@ -4,30 +4,27 @@
 # Block style
 "node.heading.title" = { fg = "orange", modifier = "bold" }
 "node.heading" = { fg = "orange" }
-#"node.heading.h2" = { fg = "orange" }
-#"node.heading.h3" = { fg = "orange" }
-#"node.heading.h4" = { fg = "orange" }
-#"node.heading.h5" = { fg = "orange" }
-#"node.heading.h6" = { fg = "orange" }
-"node.quote" = { bg = "gray" }
-#"node.list" = {fg="orange"}
+"node.quote" = { bg = "comment_bg" }
+"node.list" = { fg = "fg" }
 
 # InLineItem style
-"node.blockquote" = { fg = "gray" }
-"node.text.strong" = { fg = "gray", modifier = "bold" }
-"node.text.italic" = { fg = "gray", modifier = "italic" }
-"node.text.mark" = { bg = "yellow" }
-"node.text.blockref" = { fg = "yellow" }
-"node.text.weblink" = { fg = "blue" }
-"node.text.mathblock" = { fg = "yellow" }
-"node.text.code" = { fg = "yellow" }
-"node.text.tag" = { fg = "yellow", modifier = "bold" }
+"node.blockquote" = { fg = "comment" }
+"node.text.strong" = { fg = "fg", modifier = "bold" }
+"node.text.italic" = { fg = "fg", modifier = "italic" }
+"node.text.mark" = { bg = "highlight_yellow" }
+"node.text.blockref" = { fg = "blue" }
+"node.text.weblink" = { fg = "link_blue", modifier = "underlined" }
+"node.text.mathblock" = { fg = "cyan" }
+"node.text.code" = { fg = "green", bg = "code_bg" }
+"node.text.tag" = { fg = "purple", modifier = "bold" }
 
-
-"ui.gutter" = { fg = "bg", bg_scale = 1.5 }
+# UI elements
+"ui.gutter" = { fg = "gutter_fg", bg = "gutter_bg" }
 "ui.gutter.DECOR" = { fg = "cyan" }
 "ui.bufferline" = { bg = "blue", bg_scale = 1.0 }
+
 [palette]
+# Base colors (保持原有)
 bg = "#282c34"
 fg = "#abb2bf"
 red = "#e06c75"
@@ -43,3 +40,10 @@ gray = "#5c6370"
 highlight = "#e2be7d"
 comment = "#7f848e"
 
+# New colors based on IntelliJ scheme
+link_blue = "#548af7"
+code_bg = "#26292c"
+comment_bg = "#2b2d30"
+gutter_fg = "#4b5059"
+gutter_bg = "#1e1f22"
+highlight_yellow = "#f2c55c"

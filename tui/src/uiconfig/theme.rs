@@ -1,5 +1,5 @@
 use once_cell::sync::Lazy;
-use ratatui::prelude::{Color};
+use ratatui::prelude::Color;
 use ratatui::style::Color as RatColor;
 use ratatui::style::{Modifier, Style};
 use std::collections::HashMap;
@@ -11,7 +11,7 @@ pub static DEFAULT_THEME_DATA: Lazy<Value> = Lazy::new(|| {
     toml::from_str(std::str::from_utf8(bytes).unwrap()).expect("Failed to parse base default theme")
 });
 const PALETTE_NAME: &str = "palette";
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug)]
 pub struct Theme {
     // them name
     pub name: String,
@@ -56,8 +56,8 @@ pub struct ThemeColorItem {
     style_modifiers: Modifier,
 }
 
-impl Theme {
-    pub fn default() -> Self {
+impl Default for Theme {
+    fn default() -> Self {
         let value = &*DEFAULT_THEME_DATA;
         let (palette, styles) = load_theme_config_file(value);
 
@@ -207,10 +207,39 @@ fn change_brightness(color: &str, amount: f32) -> Result<Color, ratatui::style::
 #[cfg(test)]
 mod test {
     use crate::uiconfig::theme::Theme;
-
+    use ratatui::{
+        backend::TestBackend,
+        style::{Modifier, Style},
+        text::Span,
+        Terminal,
+    };
+    
     #[test]
     fn test_theme_parse() {
         let theme = Theme::default();
         assert_eq!(theme.name, "default");
+    }
+
+    #[test]
+    fn simple_underline_demo() {
+        let backend = TestBackend::new(30, 5);
+        let mut terminal = Terminal::new(backend).unwrap();
+
+        let underlined_span = Span::styled(
+            "这是下划线文本",
+            Style::default().add_modifier(Modifier::UNDERLINED),
+        );
+
+        terminal
+            .draw(|f| {
+                use ratatui::layout::Rect;
+                use ratatui::widgets::Paragraph;
+
+                let paragraph = Paragraph::new(underlined_span);
+                f.render_widget(paragraph, Rect::new(0, 0, 30, 5));
+            })
+            .unwrap();
+
+        println!("下划线文本渲染完成");
     }
 }

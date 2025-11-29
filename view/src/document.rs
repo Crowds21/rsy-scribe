@@ -237,8 +237,7 @@ impl DocumentModel {
         available_width: u16,
     ) -> Vec<DocumentLine> {
         let items = self.create_inline_items(node);
-        let lines = DocumentModel::split_item_to_document_lines(items, available_width);
-        lines
+        DocumentModel::split_item_to_document_lines(items, available_width)
     }
     fn create_list_block_lines(&mut self, node: &Node, line_width: u16) -> Vec<DocumentLine> {
         let mut lines: Vec<DocumentLine> = Vec::new();
@@ -320,9 +319,11 @@ impl DocumentModel {
             .clone()
             .unwrap_or_default()
             .replace('\u{200b}', "");
+        // 将 html 字符转换为 unicode 字符
+        let after_parse = html_escape::decode_html_entities(&content);
         let item = InLineItem {
             item_type: InLineMarkType::Default,
-            content,
+            content: after_parse.parse().unwrap_or(String::from("")),
             link: None,
             style: None,
             line_break: false,
@@ -336,11 +337,12 @@ impl DocumentModel {
             .clone()
             .unwrap_or_default()
             .replace('\u{200b}', "");
+        let after_parse = html_escape::decode_html_entities(&content);
         let mark_type = node.text_mark_type.clone().unwrap_or_default().clone();
         let enum_mark_type = InLineMarkType::from_str(&mark_type).unwrap_or_default();
         let mut item = InLineItem {
             item_type: enum_mark_type,
-            content,
+            content: after_parse.parse().unwrap_or(String::from("")),
             link: None,
             style: None,
             line_break: false,
@@ -509,7 +511,7 @@ impl DocumentModel {
 
         // 处理文本末尾的换行符
         if let Some(newline_pos) = last_newline_pos {
-            return (newline_pos  as u16+ 1, break_line);
+            return (newline_pos as u16 + 1, break_line);
         }
 
         (content.len() as u16, break_line)
@@ -650,5 +652,12 @@ mod test {
             max_line_len: 0,
         };
         println!("{}", m1);
+    }
+    
+    #[test]
+    fn test_lib_html_escape(){
+        let str ="\u{200b}&lt;";
+        let after_parse = html_escape::decode_html_entities(&str);
+        assert_eq!("<",after_parse);
     }
 }
