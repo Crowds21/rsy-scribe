@@ -73,6 +73,14 @@ impl Component for SearchBox {
             width: area.width.saturating_sub(10),   // 左右各减5
             height: area.height.saturating_sub(10), // 上下各减5
         };
+        // 先渲染一个空白背景
+        frame.render_widget(Clear, inner_area);
+        let popup_bg = cx.theme.styles.get("editor.popup.bg").unwrap();
+        let background = Block::default()
+            .borders(Borders::ALL)
+            .style(*popup_bg); // 使用与主题匹配的颜色
+        frame.render_widget(background, inner_area);
+
         // 需要对传入的 area 进行计算再处理
         // 分割上下区域
         let chunks = Layout::default()

@@ -12,6 +12,8 @@ use std::any::Any;
 use std::time::Instant;
 
 pub trait Component: Any + AnyComponent {
+    /// 由于 Ratatui 在渲染时,只会更新"发生变化"的位置,而不是对组件占据的整个区域进行更新
+    /// 所以如果想实现组件互相直接的堆叠和覆盖,需要先绘制一个"占位背景"
     fn render(&mut self, f: &mut Frame, area: Rect, cx: &mut CompositorContext);
     fn handle_event(&mut self, event: &Event, context: &mut CompositorContext) -> EventResult {
         EventResult::Ignored(None)

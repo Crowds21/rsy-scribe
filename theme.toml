@@ -1,4 +1,5 @@
 "editor.bg" = { bg = "bg" }
+"editor.popup.bg" ={bg = "bg_darker"}
 "editor.font" = { fg = "fg" }
 
 # Block style
@@ -26,7 +27,11 @@
 [palette]
 # Base colors (保持原有)
 bg = "#282c34"
+# 比主背景稍暗，用于区分层次
+bg_darker = "#1e2127"
+bg_lighter = "#323842"
 fg = "#abb2bf"
+
 red = "#e06c75"
 orange = "#d19a66"
 yellow = "#e5c07b"
@@ -37,10 +42,9 @@ purple = "#c678dd"
 white = "#abb2bf"
 black = "#282c34"
 gray = "#5c6370"
+
 highlight = "#e2be7d"
 comment = "#7f848e"
-
-# New colors based on IntelliJ scheme
 link_blue = "#548af7"
 code_bg = "#26292c"
 comment_bg = "#2b2d30"

@@ -9,3 +9,9 @@
 1. 调整为只有首次加载文档的时候,才会进行"渲染"
 2. 调整终端页面时,需要重新计算行长度.
 3. 不同层级的 Layer 叠加展示存在问题 
+
+## CICD
+TODO 通过 git action ,每个大版本,自动生成 ChangeLog
+```bash
+git cliff -o CHANGELOG.md
+```
