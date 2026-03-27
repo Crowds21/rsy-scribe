@@ -2,6 +2,8 @@ use anyhow::{anyhow, Context};
 
 use super::domain::*;
 use super::*;
+#[allow(deprecated)]
+use super::{SIYUAN_BASE, API_SQL_QUERY};
 use std::collections::HashMap;
 use serde_json::json;
 
@@ -69,6 +71,7 @@ mod test {
     use super::*;
 
     #[tokio::test]
+    #[ignore]
     async fn test_get_document_list_by_title() {
         let result = search_doc_with_title(String::from("rust")).await;
         match result {

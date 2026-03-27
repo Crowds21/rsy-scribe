@@ -1,46 +1,65 @@
 use serde::{Deserialize, Serialize};
-#[derive(Serialize, Deserialize, Debug)]
+
+#[derive(Default, Serialize, Deserialize, Debug)]
 pub struct SyResponse{
     pub code: i32,
     pub msg: String,
+    #[serde(default)]
     pub data: Vec<SyBlock>,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+/// SQL 查询结果（灵活解析）
+#[derive(Default, Serialize, Deserialize, Debug)]
 pub struct SyBlock {
+    #[serde(default)]
     pub alias: String,
     /// 笔记本 id
-    #[serde(rename = "box")]
+    #[serde(default, rename = "box")]
     pub box_id : String,
-    /// 去除了Markdown标记后的文本内容
+    /// 去除了 Markdown 标记后的文本内容
+    #[serde(default)]
     pub content: String,
-    #[serde(rename = "created")]
+    #[serde(default, rename = "created")]
     pub created_at: String,
+    #[serde(default)]
     pub fcontent: String,
+    #[serde(default)]
     pub hash: String,
+    #[serde(default)]
     pub hpath: String,
+    #[serde(default)]
     pub ial: String,
+    #[serde(default)]
     pub id: String,
+    #[serde(default)]
     pub length: i32,
+    #[serde(default)]
     pub markdown: String,
+    #[serde(default)]
     pub memo: String,
+    #[serde(default)]
     pub name: String,
+    #[serde(default)]
     pub parent_id: String,
+    #[serde(default)]
     pub path: String,
+    #[serde(default)]
     pub root_id: String,
+    #[serde(default)]
     pub sort: i32,
+    #[serde(default)]
     pub subtype: String,
+    #[serde(default)]
     pub tag: String,
-    #[serde(rename = "type")]
+    #[serde(default, rename = "type")]
     pub block_type: String,
+    #[serde(default)]
     pub updated: String,
 }
 
 pub enum SyBlockType{
     Document,
-    // H1-H6
     Title, 
-    // Order,Unordered,Task
     List,
     ListItem,
     Quote,
@@ -49,7 +68,6 @@ pub enum SyBlockType{
     Code,
     Method,
     Table,
-    // 数据库块
     DataBlock,
     QueryEmbed,
     Video,
@@ -57,6 +75,5 @@ pub enum SyBlockType{
     Widget,
     IFrame,
     Html,
-    // 分割线
     Tb,
 }

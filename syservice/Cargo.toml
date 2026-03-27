@@ -7,16 +7,34 @@ categories.workspace = true
 repository.workspace = true
 
 [dependencies]
+# 序列化
 serde = { version = "1", features = ["derive"] }
-tokio = { version = "1.41.0", features = ["full"] }
-reqwest = { version = "0.12", features = ["json"] }
+serde_json = "1.0"
+serde_bytes = "0.11"
+
+# 异步运行时
+tokio = { version = "1", features = ["full"] }
 tokio-stream = "0.1"
 futures-util = { version = "0.3", features = ["std", "async-await"], default-features = false }
-serde_json = "1.0.132"
-serde_bytes = "0.11.17"
+async-trait = "0.1"
+
+# HTTP 客户端
+reqwest = { version = "0.12", features = ["json"] }
+
+# 错误处理
 anyhow = "1"
-rand = "0.9.0"
-chrono = "0.4.40"
-strum = { version = "0.27.1", features = ["derive"] }
-ropey = "1.6.1"
+thiserror = "2"
+
+# 工具库
+chrono = { version = "0.4", features = ["serde"] }
+rand = "0.9"
+strum = { version = "0.27", features = ["derive"] }
+ropey = "1.6"
 rangemap = { version = "1", features = ["serde1"] }
+
+# 配置管理
+dotenvy = "0.15"
+dirs = "6"
+
+[dev-dependencies]
+tokio-test = "0.4"
