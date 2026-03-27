@@ -653,7 +653,7 @@ mod test {
         };
         println!("{}", m1);
     }
-    
+
     #[test]
     fn test_lib_html_escape(){
         let str ="\u{200b}&lt;";

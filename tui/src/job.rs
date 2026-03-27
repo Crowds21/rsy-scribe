@@ -52,6 +52,7 @@ pub(crate) static JOB_QUEUE: RunTimeLocal<OnceCell<Sender<Callback>>> = {
     }
 };
 
+
 pub async fn dispatch(job: impl FnOnce(&mut EditorModel, &mut Compositor) + Send + 'static) {
     let _ = JOB_QUEUE.wait().send(Box::new(job)).await;
 }

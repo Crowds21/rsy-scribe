@@ -5,6 +5,7 @@ pub mod component;
 pub mod uiconfig;
 mod debounce;
 mod adaptor;
+mod commands;
 
 #[cfg(test)]
 mod tests {

@@ -4,6 +4,7 @@ use crate::component::Component;
 use crate::uiconfig::theme::Theme;
 use crossterm::event::{Event, KeyEvent, KeyEventKind};
 use ratatui::prelude::*;
+use view::document::DocumentId;
 use view::editor::EditorModel;
 
 /// 回调
@@ -26,7 +27,9 @@ pub struct Compositor {
 pub struct CompositorContext<'a> {
     pub editor_model: &'a mut EditorModel,
     pub theme: Theme,
-    pub scroll: Option<usize>,
+    /// 偏移量. 即从第几行开始展示原文档
+    /// TODO Helix command::scroll
+    pub scroll: Option<u16>,
 }
 
 impl<'a> Compositor {
@@ -90,5 +93,190 @@ impl<'a> Compositor {
 
     pub fn resize(&mut self, area: Rect) {
         self.area = area;
+    }
+}
+impl CompositorContext<'_> {
+    /// 基于光标的移动大小,来计算是否需要向上滑动屏幕. 
+    /// # 参数列表
+    /// - movement: 光标向上移动的行数（正数）
+    pub fn scroller_backward(&mut self, movement: u16) {
+        let current_scroll = self.scroll.unwrap_or_default();
+
+        match self.editor_model.current_id {
+            None => return,
+            Some(id) => {
+                // 获取文档总高度
+                let doc_height = self.editor_model.get_current_doc_height();
+
+                // 计算新的滚动位置（确保不会滚动到负值）
+                let new_scroll = current_scroll.saturating_sub(movement);
+
+                // 更新滚动位置
+                self.scroll = Some(new_scroll);
+            }
+        }
+    }
+
+    /// 基于光标的移动位置,向下滑动屏幕
+    /// # 参数列表
+    /// - movement: 光标向下移动的行数（正数）
+    pub fn scroller_forward(&mut self, movement: u16, area_height: u16) {
+        let current_scroll = self.scroll.unwrap_or_default();
+
+        match self.editor_model.current_id {
+            None => return,
+            Some(id) => {
+                // 获取文档总高度
+                let doc_height = self.editor_model.get_current_doc_height();
+
+                // 计算最大可滚动位置
+                let max_scroll = if doc_height > area_height {
+                    doc_height - area_height
+                } else {
+                    0
+                };
+
+                // 计算新的滚动位置（确保不会超过最大滚动位置）
+                let new_scroll = current_scroll.saturating_add(movement);
+                let clamped_scroll = new_scroll.min(max_scroll);
+
+                // 更新滚动位置
+                self.scroll = Some(clamped_scroll);
+            }
+        }
+    }
+
+    /// 调用该函数时,光标应保持在屏幕中的位置不动,
+    /// 而移动整个展示窗口
+    /// # 参数列表
+    /// - lines: 要滚动的行数，正数表示向下滚动，负数表示向上滚动
+    pub fn scroller_screen(&mut self, lines: i16, area_height: u16) {
+        let current_scroll = self.scroll.unwrap_or_default();
+        match self.editor_model.current_id {
+            None => (),
+            Some(id) => {
+                let doc_height = self.editor_model.get_current_doc_height();
+                // 计算最大可滚动位置
+                let max_scroll = doc_height.saturating_sub(area_height);
+
+                // 根据移动方向计算新的滚动位置
+                let new_scroll = if lines >= 0 {
+                    // 向下滚动
+                    current_scroll.saturating_add(lines as u16)
+                } else {
+                    // 向上滚动（lines 为负值）
+                    current_scroll.saturating_sub(lines.unsigned_abs())
+                };
+                // 确保滚动位置在有效范围内
+                let clamped_scroll = new_scroll.clamp(0, max_scroll);
+                self.scroll = Some(clamped_scroll);
+            }
+        }
+    }
+
+    /// 向上滚动一页
+    pub fn scroll_page_up(&mut self, area_height: u16) {
+        self.scroller_screen(-(area_height as i16), area_height);
+    }
+
+    /// 向下滚动一页
+    pub fn scroll_page_down(&mut self, area_height: u16) {
+        self.scroller_screen(area_height as i16, area_height);
+    }
+
+    /// 确保光标在可视区域内，必要时调整滚动
+    pub fn ensure_cursor_in_viewport(
+        &mut self,
+        cursor_line: u16,
+        cursor_column: u16,
+        viewport_height: u16,
+        viewport_width: u16
+    ) -> bool {
+        let current_scroll = self.scroll.unwrap_or_default();
+        let mut scrolled = false;
+
+        match self.editor_model.current_id {
+            None => return false,
+            Some(id) => {
+                // 获取文档总高度
+                let doc_height = self.editor_model.get_current_doc_height();
+
+                // 垂直滚动检查
+                if cursor_line < current_scroll {
+                    // 光标在视口上方，向上滚动
+                    self.scroll = Some(cursor_line);
+                    scrolled = true;
+                } else if cursor_line >= current_scroll + viewport_height {
+                    // 光标在视口下方，向下滚动
+                    let new_scroll = cursor_line - viewport_height + 1;
+                    let max_scroll = if doc_height > viewport_height {
+                        doc_height - viewport_height
+                    } else {
+                        0
+                    };
+                    self.scroll = Some(new_scroll.min(max_scroll));
+                    scrolled = true;
+                }
+
+                // TODO: 水平滚动检查（如果需要）
+                // 可以添加类似的水平滚动逻辑
+
+                scrolled
+            }
+        }
+    }
+
+    /// 获取当前滚动位置
+    pub fn get_scroll(&self) -> u16 {
+        self.scroll.unwrap_or_default()
+    }
+
+    /// 设置滚动位置
+    pub fn set_scroll(&mut self, scroll: u16) {
+        self.scroll = Some(scroll);
+    }
+
+    /// 重置滚动位置到顶部
+    pub fn scroll_to_top(&mut self) {
+        self.scroll = Some(0);
+    }
+
+    /// 滚动到底部
+    pub fn scroll_to_bottom(&mut self, area_height: u16) {
+        match self.editor_model.current_id {
+            None => return,
+            Some(id) => {
+                let doc_height = self.editor_model.get_current_doc_height();
+                if doc_height > area_height {
+                    self.scroll = Some(doc_height - area_height);
+                } else {
+                    self.scroll = Some(0);
+                }
+            }
+        }
+    }
+
+    /// 计算光标在视口中的相对位置
+    pub fn get_relative_cursor_position(&self, cursor_line: u16, cursor_column: u16) -> (u16, u16) {
+        let scroll = self.scroll.unwrap_or_default();
+        let relative_line = cursor_line.saturating_sub(scroll);
+        (cursor_column, relative_line)
+    }
+
+    /// 检查是否可以向下滚动
+    pub fn can_scroll_down(&self, area_height: u16) -> bool {
+        match self.editor_model.current_id {
+            None => false,
+            Some(id) => {
+                let doc_height = self.editor_model.get_current_doc_height();
+                let current_scroll = self.scroll.unwrap_or_default();
+                current_scroll + area_height < doc_height
+            }
+        }
+    }
+
+    /// 检查是否可以向上滚动
+    pub fn can_scroll_up(&self) -> bool {
+        self.scroll.unwrap_or_default() > 0
     }
 }

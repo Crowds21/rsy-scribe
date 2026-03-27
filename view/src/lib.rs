@@ -3,3 +3,4 @@ mod config;
 pub mod document;
 pub mod editor;
 pub mod utils;
+mod view;

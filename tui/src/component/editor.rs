@@ -12,6 +12,7 @@ use ratatui::{
     widgets::{Block, Borders, Paragraph},
     Frame,
 };
+use ratatui::widgets::Clear;
 
 pub const ID: &str = "editor-view";
 pub struct EditorView {
@@ -45,7 +46,11 @@ impl<'a> EditorView {
         }
     }
 
-    fn cursor_move(&mut self, code: KeyCode) -> EventResult {
+    fn cursor_move(&mut self, code: KeyCode,cx: &mut CompositorContext) -> EventResult {
+        let offset = cx.scroll.unwrap_or_default();
+        // 当光标向下移动的位置超出屏幕展示边界,offset+1
+        // 当光标向上超出屏幕展示边界, offset -1 
+        // TODO 但是需判断文档的总长度
         let new_pos = match code {
             KeyCode::Down if self.cursor_position.y + 1 < self.content_area.height => Position {
                 x: self.cursor_position.x,
@@ -69,7 +74,7 @@ impl<'a> EditorView {
         EventResult::Consumed(None)
     }
 
-    pub fn render_document(
+    fn render_document(
         &mut self,
         frame: &mut Frame,
         cx: &mut CompositorContext,
@@ -92,13 +97,12 @@ impl<'a> EditorView {
 
             // 计算要渲染的起始行和结束行
             let start_line = offset;
-            let end_line = (start_line + remaining_height as usize).min(document.lines.len());
+            let end_line = (start_line + remaining_height).min(document.lines.len() as u16);
             // 逐行渲染可见部分
-            for line in document
-                .lines
+            for line in document.lines
                 .iter()
-                .skip(start_line)
-                .take(end_line - start_line)
+                .skip(start_line as usize)
+                .take((end_line - start_line) as usize)
             {
                 if remaining_height == 0 {
                     break;
@@ -148,7 +152,7 @@ impl<'a> EditorView {
                 EventResult::Consumed(Some(callback))
             }
             KeyCode::Down | KeyCode::Up | KeyCode::Left | KeyCode::Right => {
-                self.cursor_move(event.code)
+                self.cursor_move(event.code,cx)
             }
             _ => EventResult::Ignored(None), // 其他按键不处理
         }
@@ -170,10 +174,13 @@ impl Component for EditorView {
         let area = frame.size();
 
         // 清空背景
+
+        frame.render_widget(Clear, area);
         let editor_bg = cx.theme.styles.get("editor.bg").unwrap();
         frame.render_widget(Block::default().style(*editor_bg), area);
 
         // 计算编辑器区域（减去状态栏和可能的 BufferLine）
+        // TODO BufferLine 需要动态渲染
         let editor_area = Layout::default()
             .direction(Direction::Vertical)
             .constraints(vec![
@@ -246,4 +253,5 @@ impl Component for EditorView {
     fn id(&self) -> Option<&'static str> {
         Some(ID)
     }
+    
 }
