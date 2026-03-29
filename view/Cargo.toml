@@ -14,3 +14,8 @@ strum = { version = "0.27.1", features = ["derive"] }
 unicode-width = "0.2.0"
 ratatui = "0.26"
 html-escape = "0.2.13"
+crossterm = "0.27.0"
+
+[[example]]
+name = "test_styles"
+path = "examples/test_styles.rs"
