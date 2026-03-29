@@ -1,16 +1,17 @@
-use crossterm::event::{KeyCode, KeyModifiers};
-use crossterm::terminal::{disable_raw_mode, LeaveAlternateScreen};
+use crossterm::event::{Event, KeyCode, KeyModifiers};
 use crossterm::{
-    event::Event,
     execute,
     terminal::{enable_raw_mode, EnterAlternateScreen},
 };
 use ratatui::layout::Rect;
 use ratatui::{backend::CrosstermBackend, Terminal};
-use std::{io, panic};
+use std::io;
+use std::panic;
 use tui::compositor::{Compositor, CompositorContext};
 use tui::job::JobQueue;
 use view::editor::EditorModel;
+
+use crate::restore_tui;
 
 /// 应用后台
 pub struct Application {
@@ -78,9 +79,10 @@ impl Application {
             }
             Event::Key(key) => {
                 if key.modifiers == KeyModifiers::CONTROL && key.code == KeyCode::Char('c') {
-                    // self.exit_app();
-                    disable_raw_mode().expect("Disable raw mode before exit");
-                    execute!(self.terminal.backend_mut(), LeaveAlternateScreen).unwrap();
+                    self.compositor
+                        .handle_event(&event, &mut compositor_context);
+                    self.exit_app();
+                    return;
                 }
                 self.compositor
                     .handle_event(&event, &mut compositor_context);
@@ -104,7 +106,7 @@ impl Application {
     }
 
     pub fn exit_app(&mut self) {
-        disable_raw_mode().expect("Disable raw mode before exit");
-        execute!(self.terminal.backend_mut(), LeaveAlternateScreen).unwrap();
+        let _ = restore_tui();
+        std::process::exit(0);
     }
 }
