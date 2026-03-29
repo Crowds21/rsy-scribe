@@ -1,0 +1,52 @@
+# Scribe 自定义主题示例
+# 
+# 将此文件保存到 ~/.config/scribe/theme.toml 来覆盖默认主题
+# 只需定义你想覆盖的样式，未定义的样式将使用默认值
+
+# === 基础样式 ===
+"editor.bg" = { bg = "#282c34" }
+"editor.fg" = { fg = "#abb2bf" }
+
+# === 模式显示 ===
+"mode.normal" = { fg = "#98c379", modifier = "bold" }
+"mode.insert" = { fg = "#61afef", modifier = "bold" }
+"mode.command" = { fg = "#e5c07b", modifier = "bold" }
+"mode.search" = { fg = "#c678dd", modifier = "bold" }
+
+# === 标题样式 ===
+"node.heading.h1" = { fg = "#56b6c2", modifier = "bold" }
+"node.heading.h2" = { fg = "#56b6c2" }
+"node.heading.h3" = { fg = "#61afef", modifier = "bold" }
+"node.heading.h4" = { fg = "#61afef" }
+
+# === 代码块样式 ===
+"code.block.fence" = { fg = "#7f848e" }
+"code.block.content" = { fg = "#98c379" }
+"code.inline" = { fg = "#98c379", bg = "#26292c" }
+
+# === 引用块样式 ===
+"blockquote.marker" = { fg = "#7f848e" }
+"blockquote.content" = { fg = "#e5c07b" }
+
+# === 行内元素样式 ===
+"strong" = { fg = "#abb2bf", modifier = "bold" }
+"em" = { fg = "#abb2bf", modifier = "italic" }
+"strong.em" = { fg = "#abb2bf", modifier = "bold italic" }
+"mark" = { fg = "#000000", bg = "#f2c55c" }
+"link" = { fg = "#548af7", modifier = "underlined" }
+"tag" = { fg = "#c678dd" }
+
+# === 列表和表格 ===
+"list.bullet" = { fg = "#7f848e" }
+"table.separator" = { fg = "#7f848e" }
+"divider" = { fg = "#7f848e" }
+
+# === 兼容旧版样式键（可选） ===
+"node.heading.title" = { fg = "#d19a66", modifier = "bold" }
+"node.heading" = { fg = "#d19a66" }
+"node.text.strong" = { fg = "#abb2bf", modifier = "bold" }
+"node.text.italic" = { fg = "#abb2bf", modifier = "italic" }
+"node.text.code" = { fg = "#98c379", bg = "#26292c" }
+"node.text.weblink" = { fg = "#548af7", modifier = "underlined" }
+"node.text.tag" = { fg = "#c678dd", modifier = "bold" }
+"ui.gutter" = { fg = "#4b5059", bg = "#1e1f22" }

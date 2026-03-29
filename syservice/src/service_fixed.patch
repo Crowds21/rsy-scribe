@@ -1,0 +1,11 @@
+--- a/service.rs
++++ b/service.rs
+@@ -230,7 +230,7 @@ impl SiYuanService {
+     /// 构建认证请求头
+     fn auth_headers(&self) -> HashMap<&'static str, String> {
+         let mut headers = HashMap::new();
+-        headers.insert("Authorization", format!("Token {}", self.inner.token));
++        headers.insert("Authorization", format!("Token {}", self.inner.token));
+         headers.insert("Content-Type", "application/json".to_string());
+         headers
+     }
