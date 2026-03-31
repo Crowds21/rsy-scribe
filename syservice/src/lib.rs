@@ -25,23 +25,6 @@ pub mod prelude {
     pub use async_trait::async_trait;
 }
 
-// 遗留常量（向后兼容）
-#[doc(hidden)]
-#[deprecated(since = "0.2.0", note = "Use Config instead")]
-pub static REPO_PATH: &str = "/Users/crowds/Notes/SiYuanKnowledgeBase/data";
-
-#[doc(hidden)]
-#[deprecated(since = "0.2.0", note = "Use Config instead")]
-pub static SIYUAN_BASE: &str = "http://127.0.0.1:6806";
-
-#[doc(hidden)]
-#[deprecated(since = "0.2.0", note = "Use Config instead")]
-pub static API_SQL_QUERY: &str = "/api/query/sql";
-
-#[doc(hidden)]
-#[deprecated(since = "0.2.0", note = "Use Config instead")]
-pub static API_TOKEN: &str = "1g4rmbq473pv40jo";
-
 #[cfg(test)]
 mod tests {
     use crate::prelude::*;

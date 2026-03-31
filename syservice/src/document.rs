@@ -2,8 +2,7 @@ use anyhow::{anyhow, Context};
 
 use super::domain::*;
 use super::*;
-#[allow(deprecated)]
-use super::{SIYUAN_BASE, API_SQL_QUERY};
+use crate::config::Config;
 use std::collections::HashMap;
 use serde_json::json;
 
@@ -41,18 +40,28 @@ pub async fn search_doc_with_title(title: String) -> anyhow::Result<SyResponse, 
     map.insert("stmt", sql);
     let body = json!(map);
 
+    // 从配置加载 API 信息
+    let config = Config::load();
+    let api_url = format!("{}/api/query/sql", config.base_url);
+
     let client = reqwest::Client::builder()
         .no_proxy()
         .build()?;
     
-    let response = client
-        .post(format!("{}{}", SIYUAN_BASE, API_SQL_QUERY))
+    let mut request = client
+        .post(&api_url)
         .header("Content-Type", "application/json")
-        .header("Authorization", "Token ".to_owned() + API_TOKEN)
-        .json(&body)
+        .json(&body);
+    
+    // 如果有 token，添加认证头
+    if !config.token.is_empty() {
+        request = request.header("Authorization", format!("Token {}", config.token));
+    }
+    
+    let response = request
         .send()
         .await
-        .map_err(|e| anyhow!("Failed to send request to {}: {}", API_SQL_QUERY , e))?;
+        .map_err(|e| anyhow!("Failed to send request to {}: {}", api_url, e))?;
 
     if !response.status().is_success() {
         println!("API returned {}: {}",

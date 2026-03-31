@@ -93,16 +93,18 @@ impl HttpClient {
         let url = format!("{}{}", self.config.base_url, endpoint);
         let headers = self.auth_headers();
         let mut attempts = 0;
+        let max_retries = 3;
+        let retry_delay_ms = 100;
 
         loop {
             attempts += 1;
             match self.execute_post(&url, &headers, body).await {
                 Ok(response) => return Ok(response),
                 Err(e) => {
-                    if !e.is_retryable() || attempts >= self.config.max_retries {
+                    if !e.is_retryable() || attempts >= max_retries {
                         return Err(e);
                     }
-                    let delay = self.config.retry_delay_ms * (1 << (attempts - 1));
+                    let delay = retry_delay_ms * (1 << (attempts - 1));
                     tokio::time::sleep(Duration::from_millis(delay as u64)).await;
                 }
             }
@@ -381,7 +383,15 @@ mod tests {
 
     #[test]
     fn test_http_client_invalid_config() {
+        // 默认配置现在是有效的（token 不是必需的）
         let config = Config::default();
+        let client = HttpClient::new(&config);
+        assert!(client.is_ok());
+        
+        // 无效的 URL 才会导致错误
+        let config = Config::builder()
+            .base_url("invalid-url")
+            .build();
         let client = HttpClient::new(&config);
         assert!(client.is_err());
     }

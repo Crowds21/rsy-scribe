@@ -116,8 +116,6 @@ pub trait ConfigProvider: Send + Sync {
     fn base_url(&self) -> &str;
     fn token(&self) -> &str;
     fn timeout_secs(&self) -> u64 { 30 }
-    fn max_retries(&self) -> u32 { 3 }
-    fn retry_delay_ms(&self) -> u64 { 100 }
 }
 
 // ==================== 日志 Trait ====================

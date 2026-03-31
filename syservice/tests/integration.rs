@@ -14,16 +14,9 @@
 
 use syservice::prelude::*;
 
-const TEST_BASE_URL: &str = "http://127.0.0.1:6806";
-const TEST_TOKEN: &str = "1g4rmbq473pv40jo";
-
 fn create_client() -> HttpClient {
-    let config = Config::builder()
-        .base_url(TEST_BASE_URL)
-        .token(TEST_TOKEN)
-        .timeout_secs(30)
-        .max_retries(3)
-        .build();
+    // 从环境变量或配置文件加载配置
+    let config = Config::load();
     HttpClient::new(&config).expect("Failed to create HTTP client")
 }
 
@@ -235,7 +228,7 @@ async fn test_block_attributes() {
 async fn test_error_handling() {
     // 测试无效的 Token
     let config = Config::builder()
-        .base_url(TEST_BASE_URL)
+        .base_url("http://127.0.0.1:6806")
         .token("invalid_token")
         .build();
 
