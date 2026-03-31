@@ -1,37 +1,149 @@
 "editor.bg" = { bg = "bg" }
-"editor.popup.bg" ={bg = "bg_darker"}
-"editor.font" = { fg = "fg" }
+"editor.fg" = { fg = "fg" }
+"editor.popup.bg" = { bg = "bg_darker" }
 
-# Block style
+# ============================================
+# 模式显示样式
+# ============================================
+"mode.normal" = { fg = "green", modifier = "bold" }
+"mode.insert" = { fg = "blue", modifier = "bold" }
+"mode.command" = { fg = "yellow", modifier = "bold" }
+"mode.search" = { fg = "purple", modifier = "bold" }
+
+# ============================================
+# 标题样式 (H1-H6)
+# ============================================
+"node.heading.h1" = { fg = "red", modifier = "bold" }
+"node.heading.h2" = { fg = "orange", modifier = "bold" }
+"node.heading.h3" = { fg = "yellow", modifier = "bold" }
+"node.heading.h4" = { fg = "green", modifier = "bold" }
+"node.heading.h5" = { fg = "cyan", modifier = "bold" }
+"node.heading.h6" = { fg = "blue", modifier = "bold" }
 "node.heading.title" = { fg = "orange", modifier = "bold" }
 "node.heading" = { fg = "orange" }
-"node.quote" = { bg = "comment_bg" }
-"node.list" = { fg = "fg" }
 
-# InLineItem style
-"node.blockquote" = { fg = "comment" }
+# ============================================
+# 基础行内样式 - 单一
+# ============================================
 "node.text.strong" = { fg = "fg", modifier = "bold" }
 "node.text.italic" = { fg = "fg", modifier = "italic" }
-"node.text.mark" = { bg = "highlight_yellow" }
+"node.text.underline" = { fg = "fg", modifier = "underlined" }
+"node.text.mark" = { fg = "bg", bg = "yellow" }
+"node.text.code" = { fg = "green", bg = "code_bg" }
 "node.text.blockref" = { fg = "blue" }
 "node.text.weblink" = { fg = "link_blue", modifier = "underlined" }
 "node.text.mathblock" = { fg = "cyan" }
-"node.text.code" = { fg = "green", bg = "code_bg" }
 "node.text.tag" = { fg = "purple", modifier = "bold" }
 
-# UI elements
+
+# ============================================
+# 行内样式快捷方式 (用于 TextMarkType 解析)
+# ============================================
+# 单一
+"strong" = { fg = "fg", modifier = "bold" }
+"bold" = { fg = "fg", modifier = "bold" }
+"em" = { fg = "fg", modifier = "italic" }
+"italic" = { fg = "fg", modifier = "italic" }
+"u" = { fg = "fg", modifier = "underlined" }
+"underline" = { fg = "fg", modifier = "underlined" }
+"s" = { fg = "fg", modifier = "crossed_out" }
+"strike" = { fg = "fg", modifier = "crossed_out" }
+"del" = { fg = "fg", modifier = "crossed_out" }
+"mark" = { fg = "bg", bg = "yellow" }
+"highlight" = { fg = "bg", bg = "yellow" }
+"code" = { fg = "green", bg = "code_bg" }
+"link" = { fg = "link_blue", modifier = "underlined" }
+"tag" = { fg = "purple" }
+
+# ============================================
+# 引用块样式
+# ============================================
+"node.blockquote" = { fg = "comment" }
+"node.quote" = { bg = "comment_bg" }
+"blockquote.marker" = { fg = "comment" }
+"blockquote.content" = { fg = "yellow" }
+
+# ============================================
+# 列表样式
+# ============================================
+"node.list" = { fg = "fg" }
+"list.bullet" = { fg = "comment" }
+"list.number" = { fg = "comment" }
+"list.task" = { fg = "green" }
+
+# ============================================
+# 代码块样式
+# ============================================
+"code.block" = { fg = "fg", bg = "bg_darker" }
+"code.block.fence" = { fg = "comment" }
+"code.block.content" = { fg = "green" }
+"code.block.info" = { fg = "cyan" }
+"code.inline" = { fg = "green", bg = "code_bg" }
+
+# ============================================
+# 表格样式
+# ============================================
+"table" = { fg = "fg" }
+"table.header" = { fg = "cyan", modifier = "bold" }
+"table.separator" = { fg = "comment" }
+"table.cell" = { fg = "fg" }
+
+# ============================================
+# 分隔线样式
+# ============================================
+"divider" = { fg = "comment" }
+"thematic_break" = { fg = "comment" }
+
+# ============================================
+# UI 元素样式
+# ============================================
 "ui.gutter" = { fg = "gutter_fg", bg = "gutter_bg" }
 "ui.gutter.DECOR" = { fg = "cyan" }
-"ui.bufferline" = { bg = "blue", bg_scale = 1.0 }
+"ui.bufferline" = { bg = "blue" }
+"ui.statusbar" = { fg = "fg", bg = "bg_darker" }
+"ui.popup" = { fg = "fg", bg = "bg_darker" }
 
+# ============================================
+# 链接和引用
+# ============================================
+"link.hover" = { fg = "cyan", modifier = "underlined" }
+"link.visited" = { fg = "purple", modifier = "underlined" }
+"blockref" = { fg = "blue" }
+"fileref" = { fg = "cyan" }
+
+# ============================================
+# 特殊元素
+# ============================================
+"emoji" = { fg = "fg" }
+"html" = { fg = "red" }
+"latex" = { fg = "cyan" }
+"yaml_frontmatter" = { fg = "comment" }
+
+# ============================================
+# 语法高亮 (用于代码块)
+# ============================================
+"keyword" = { fg = "purple", modifier = "bold" }
+"string" = { fg = "green" }
+"number" = { fg = "orange" }
+"comment" = { fg = "comment", modifier = "italic" }
+"function" = { fg = "blue" }
+"type" = { fg = "yellow" }
+"variable" = { fg = "fg" }
+"constant" = { fg = "orange" }
+"operator" = { fg = "cyan" }
+
+# ============================================
+# OneDark Pro 调色板
+# https://github.com/atom/atom-one-dark-theme
+# ============================================
 [palette]
-# Base colors (保持原有)
+# 基础颜色
 bg = "#282c34"
-# 比主背景稍暗，用于区分层次
-bg_darker = "#1e2127"
-bg_lighter = "#323842"
+bg_darker = "#21252b"
+bg_lighter = "#2c313a"
 fg = "#abb2bf"
 
+# 语法颜色
 red = "#e06c75"
 orange = "#d19a66"
 yellow = "#e5c07b"
@@ -43,11 +155,25 @@ white = "#abb2bf"
 black = "#282c34"
 gray = "#5c6370"
 
-highlight = "#e2be7d"
+# 特殊用途
 comment = "#7f848e"
+comment_bg = "#2b2d30"
 link_blue = "#548af7"
 code_bg = "#26292c"
-comment_bg = "#2b2d30"
 gutter_fg = "#4b5059"
 gutter_bg = "#1e1f22"
 highlight_yellow = "#f2c55c"
+selection_bg = "#3e4451"
+cursor_fg = "#528bff"
+
+# 亮色变体
+light_red = "#ff6b75"
+light_green = "#98ff79"
+light_blue = "#61d5ff"
+light_purple = "#ff79ff"
+
+# 暗色变体
+dark_red = "#a03c45"
+dark_green = "#5c8f45"
+dark_blue = "#3d7fbf"
+dark_purple = "#8f45a5"

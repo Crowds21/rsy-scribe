@@ -1,9 +1,9 @@
+use crate::styles::{parse_marks, BaseMark, DecorMark, InlineMarks};
 use crate::utils;
 use std::default::Default;
 use std::fmt;
 use std::num::NonZeroUsize;
 use std::str::FromStr;
-use strum::EnumString;
 use syservice::lute::node::{Node, NodeType};
 use unicode_width::{UnicodeWidthChar, UnicodeWidthStr};
 
@@ -33,38 +33,20 @@ pub struct DocumentModel {
     /// 最大长度
     pub max_line_len: u16,
 }
-#[derive(Clone, Default, EnumString)]
-#[strum(serialize_all = "kebab-case")]
-enum InLineMarkType {
-    #[default]
-    Default,
-    Strong,
-    /// Italic
-    Em,
-    Mark,
-    Code,
-    BlockRef,
-    /// HyperLink
-    A,
-    Tag,
-    /// UnderLine
-    U,
-    /// DeleteLine
-    S,
-}
+
 #[derive(Clone, Default)]
 pub struct InLineItem {
-    // TODO 如果一个块有多个样式,思源会通过字符串拼接,如"strong em"的方式来添加样式
-    //  这里需要参考 node_type_str 字段,自己做一次解析处理.
-    pub item_type: InLineMarkType,
-    // 行内元素类型
+    /// 复合样式（部分样式互斥 + 部分样式可叠加）
+    pub marks: InlineMarks,
+    /// 行内元素原始内容
     pub content: String,
-    // 展示内容
+    /// 展示内容（已转义）
+    pub display_content: String,
+    /// 跳转链接（用于 BlockRef 或 HyperLink）
     pub link: Option<String>,
-    // 转跳
-    /// 对应 theme.toml 中的配置
-    pub style: Option<String>,
-    /// Departed
+    /// 对应 theme.toml 中的样式名称
+    pub style_name: Option<String>,
+    /// 是否为块内软换行
     line_break: bool,
 }
 #[derive(Clone, Default)]
@@ -204,15 +186,15 @@ impl DocumentModel {
             decorate: &str,
             content: &mut Vec<DocumentLine>,
             length: u16,
-            style: String,
         ) {
             let mut before_heading = DocumentLine::default();
             let decoration_line = decorate.repeat(length as usize);
             let decoration_item = InLineItem {
-                item_type: InLineMarkType::Strong,
-                content: decoration_line,
+                marks: InlineMarks::default(),
+                content: decoration_line.clone(),
+                display_content: decoration_line,
                 link: None,
-                style: None,
+                style_name: None,
                 line_break: false,
             };
             before_heading.content = vec![decoration_item];
@@ -222,12 +204,12 @@ impl DocumentModel {
         }
         let level = node.heading_level.unwrap();
         match level {
-            1 => add_decoration("=", content, content_length, "node.heading.h1".to_string()),
-            2 => add_decoration("=", content, content_length, "node.heading.h2".to_string()),
-            3 => add_decoration("=", content, content_length, "node.heading.h3".to_string()),
-            4 => add_decoration("~", content, content_length, "node.heading.h4".to_string()),
-            5 => add_decoration("-", content, content_length, "node.heading.h5".to_string()),
-            6 => add_decoration("-", content, content_length, "node.heading.h6".to_string()),
+            1 => add_decoration("=", content, content_length),
+            2 => add_decoration("=", content, content_length),
+            3 => add_decoration("=", content, content_length),
+            4 => add_decoration("~", content, content_length),
+            5 => add_decoration("-", content, content_length),
+            6 => add_decoration("-", content, content_length),
             _ => {}
         }
     }
@@ -278,19 +260,21 @@ impl DocumentModel {
         for (index, line) in result.iter_mut().enumerate() {
             if index == 0 {
                 let item = InLineItem {
-                    item_type: Default::default(),
+                    marks: InlineMarks::default(),
                     content: format!("{} ", bullet_char),
+                    display_content: format!("{} ", bullet_char),
                     link: None,
-                    style: None,
+                    style_name: None,
                     line_break: false,
                 };
                 line.content.insert(0, item);
             } else {
                 let item = InLineItem {
-                    item_type: Default::default(),
+                    marks: InlineMarks::default(),
                     content: "  ".to_string(),
+                    display_content: "  ".to_string(),
                     link: None,
-                    style: None,
+                    style_name: None,
                     line_break: false,
                 };
                 line.content.insert(0, item);
@@ -321,14 +305,16 @@ impl DocumentModel {
             .replace('\u{200b}', "");
         // 将 html 字符转换为 unicode 字符
         let after_parse = html_escape::decode_html_entities(&content);
+        let display_content = after_parse.to_string();
+        let width = display_content.width();
         let item = InLineItem {
-            item_type: InLineMarkType::Default,
-            content: after_parse.parse().unwrap_or(String::from("")),
+            marks: InlineMarks::default(),
+            content: content.to_string(),
+            display_content,
             link: None,
-            style: None,
+            style_name: None,
             line_break: false,
         };
-        let width = item.content.width();
         (item, width as u16)
     }
     fn create_node_text_mark(&mut self, node: &Node) -> (InLineItem, u16) {
@@ -338,37 +324,39 @@ impl DocumentModel {
             .unwrap_or_default()
             .replace('\u{200b}', "");
         let after_parse = html_escape::decode_html_entities(&content);
-        let mark_type = node.text_mark_type.clone().unwrap_or_default().clone();
-        let enum_mark_type = InLineMarkType::from_str(&mark_type).unwrap_or_default();
-        let mut item = InLineItem {
-            item_type: enum_mark_type,
-            content: after_parse.parse().unwrap_or(String::from("")),
-            link: None,
-            style: None,
+        let display_content = after_parse.to_string();
+        
+        // 解析复合样式（如 "strong em code"）
+        let mark_type_str = node.text_mark_type.clone().unwrap_or_default();
+        let marks = parse_marks(&mark_type_str);
+        
+        // 根据基础样式确定 style_name 和 link
+        let (style_name, link) = if marks.base.contains(BaseMark::MARK) {
+            (Some("node.text.mark".to_string()), None)
+        } else if marks.base.contains(BaseMark::CODE) {
+            (Some("node.text.code".to_string()), None)
+        } else if marks.base.contains(BaseMark::BLOCK_REF) {
+            let block_ref = node.text_mark_block_ref_id.clone().unwrap_or_default();
+            (Some("node.text.blockref".to_string()), Some(block_ref))
+        } else if marks.base.contains(BaseMark::A) {
+            let web_link = node.text_mark_a_href.clone().unwrap_or_default();
+            (Some("node.text.weblink".to_string()), Some(web_link))
+        } else if marks.base.contains(BaseMark::TAG) {
+            (Some("node.text.tag".to_string()), None)
+        } else {
+            // 无基础样式，只有装饰样式或默认
+            (None, None)
+        };
+        
+        let item = InLineItem {
+            marks,
+            content: content.to_string(),
+            display_content,
+            link,
+            style_name,
             line_break: false,
         };
-        match item.item_type {
-            InLineMarkType::Strong => item.style = Some("node.text.strong".to_string()),
-            InLineMarkType::Em => item.style = Some("node.text.italic".to_string()),
-            InLineMarkType::Mark => item.style = Some("node.text.mark".to_string()),
-            InLineMarkType::Code => item.style = Some("node.text.code".to_string()),
-            InLineMarkType::BlockRef => {
-                item.style = Some("node.text.blockref".to_string());
-                let block_ref = node.text_mark_block_ref_id.clone().unwrap_or_default();
-                item.link = Some(block_ref);
-            }
-            InLineMarkType::A => {
-                // http 超链接
-                let web_link = node.text_mark_a_href.clone().unwrap_or_default();
-                item.link = Some(web_link);
-                item.style = Some("node.text.weblink".to_string())
-            }
-            InLineMarkType::Tag => item.style = Some("node.text.tag".to_string()),
-            InLineMarkType::U => {}
-            InLineMarkType::S => {}
-            _ => {}
-        }
-        let width = item.content.width();
+        let width = item.display_content.width();
         (item, width as u16)
     }
 
@@ -431,20 +419,25 @@ impl DocumentModel {
     }
 
     fn split_inline_item(item: &InLineItem, max_width: u16) -> (InLineItem, InLineItem) {
-        let content = &item.content;
+        let content = &item.display_content;
         let (split_pos, line_break) = DocumentModel::find_best_split_position(content, max_width);
+        let first_display = content[..split_pos as usize].to_string();
+        let second_display = content[split_pos as usize..].to_string();
+        
         let first_part = InLineItem {
-            item_type: item.item_type.clone(),
-            content: content[..split_pos as usize].to_string(),
-            link: None,
-            style: item.style.clone(),
+            marks: item.marks,
+            content: item.content[..split_pos as usize].to_string(),
+            display_content: first_display,
+            link: item.link.clone(),
+            style_name: item.style_name.clone(),
             line_break: false,
         };
         let second_part = InLineItem {
-            item_type: item.item_type.clone(),
-            content: content[split_pos as usize..].to_string(),
-            link: None,
-            style: item.style.clone(),
+            marks: item.marks,
+            content: item.content[split_pos as usize..].to_string(),
+            display_content: second_display,
+            link: item.link.clone(),
+            style_name: item.style_name.clone(),
             line_break,
         };
         (first_part, second_part)
@@ -463,9 +456,9 @@ impl DocumentModel {
         let mut last_newline_pos = None;
 
         for (i, c) in content.char_indices() {
-            // 首先检查换行符（优先级最高）
+            // 首先检查换行符(优先级最高)
             if c == '\n' {
-                // 记录换行符位置，但不立即返回,因为换行符前的内容可能超过最大宽度
+                // 记录换行符位置,但不立即返回,因为换行符前的内容可能超过最大宽度
                 last_newline_pos = Some(i);
             }
 
@@ -477,7 +470,7 @@ impl DocumentModel {
             let char_width = c.width().unwrap_or(1) as u16;
             let exceeds_width = current_display_width + char_width > max_display_width;
 
-            // 优先处理换行符（如果存在且未超宽）
+            // 优先处理换行符(如果存在且未超宽)
             if let Some(newline_pos) = last_newline_pos {
                 let safe_newline_pos = newline_pos + 1; // 在换行符后拆分
                                                         // 确保换行符前的内容不超过最大宽度
@@ -489,7 +482,7 @@ impl DocumentModel {
 
             // 如果超宽且没有未处理的换行符
             if exceeds_width {
-                // 如果有空格且不是中文文本，优先在空格处分隔
+                // 如果有空格且不是中文文本,优先在空格处分隔
                 if let Some(space_pos) = last_space_pos.filter(|_| !has_chinese) {
                     return (space_pos as u16 + 1, break_line);
                 }
@@ -535,10 +528,11 @@ impl fmt::Display for DocumentModel {
 impl InLineItem {
     fn default_title(content: String) -> InLineItem {
         InLineItem {
-            item_type: InLineMarkType::Default,
-            content,
+            marks: InlineMarks::default(),
+            content: content.clone(),
+            display_content: content,
             link: None,
-            style: Some("node.heading.title".to_string()),
+            style_name: Some("node.heading.title".to_string()),
             line_break: false,
         }
     }
@@ -656,8 +650,15 @@ mod test {
 
     #[test]
     fn test_lib_html_escape(){
-        let str ="\u{200b}&lt;";
+        // html_escape 只解码 HTML 实体，不解码 Unicode 零宽空格
+        let str = "&lt;";
         let after_parse = html_escape::decode_html_entities(&str);
-        assert_eq!("<",after_parse);
+        assert_eq!("<", after_parse);
+        
+        // 零宽空格需要手动替换
+        let str_with_zwsp = "\u{200b}&lt;";
+        let after_replace = str_with_zwsp.replace('\u{200b}', "");
+        let after_parse2 = html_escape::decode_html_entities(&after_replace);
+        assert_eq!("<", after_parse2);
     }
 }

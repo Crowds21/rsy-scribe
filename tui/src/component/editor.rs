@@ -111,11 +111,11 @@ impl<'a> EditorView {
                 let mut rendered_line = Line::default();
                 for item in line.content.iter() {
                     // TODO Add style
-                    let style = match &item.style {
+                    let style = match &item.style_name {
                         None => Style::default(),
                         Some(it) => cx.theme.get(&it.clone()),
                     };
-                    let span = Span::from(item.content.clone()).style(style);
+                    let span = Span::from(item.display_content.clone()).style(style);
                     rendered_line.push_span(span)
                 }
 
