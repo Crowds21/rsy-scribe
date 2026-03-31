@@ -1,4 +1,4 @@
-use crate::styles::{parse_marks, BaseMark, DecorMark, InlineMarks};
+use crate::styles::{parse_marks, BaseMark, BaseMarkKind, DecorMark, InlineMarks};
 use crate::utils;
 use std::default::Default;
 use std::fmt;
@@ -44,8 +44,8 @@ pub struct InLineItem {
     pub display_content: String,
     /// 跳转链接（用于 BlockRef 或 HyperLink）
     pub link: Option<String>,
-    /// 对应 theme.toml 中的样式名称
-    pub style_name: Option<String>,
+    /// 对应 theme.toml 中的样式名称列表（按优先级：基础样式 + 装饰样式）
+    pub styles: Vec<String>,
     /// 是否为块内软换行
     line_break: bool,
 }
@@ -194,7 +194,7 @@ impl DocumentModel {
                 content: decoration_line.clone(),
                 display_content: decoration_line,
                 link: None,
-                style_name: None,
+                styles: Vec::new(),
                 line_break: false,
             };
             before_heading.content = vec![decoration_item];
@@ -264,7 +264,7 @@ impl DocumentModel {
                     content: format!("{} ", bullet_char),
                     display_content: format!("{} ", bullet_char),
                     link: None,
-                    style_name: None,
+                    styles: Vec::new(),
                     line_break: false,
                 };
                 line.content.insert(0, item);
@@ -274,7 +274,7 @@ impl DocumentModel {
                     content: "  ".to_string(),
                     display_content: "  ".to_string(),
                     link: None,
-                    style_name: None,
+                    styles: Vec::new(),
                     line_break: false,
                 };
                 line.content.insert(0, item);
@@ -312,11 +312,12 @@ impl DocumentModel {
             content: content.to_string(),
             display_content,
             link: None,
-            style_name: None,
+            styles: Vec::new(),
             line_break: false,
         };
         (item, width as u16)
     }
+    /// 为带有行内样式的 item 添加样式
     fn create_node_text_mark(&mut self, node: &Node) -> (InLineItem, u16) {
         let content = node
             .text_mark_text_content
@@ -330,30 +331,56 @@ impl DocumentModel {
         let mark_type_str = node.text_mark_type.clone().unwrap_or_default();
         let marks = parse_marks(&mark_type_str);
         
-        // 根据基础样式确定 style_name 和 link
-        let (style_name, link) = if marks.base.contains(BaseMark::MARK) {
-            (Some("node.text.mark".to_string()), None)
-        } else if marks.base.contains(BaseMark::CODE) {
-            (Some("node.text.code".to_string()), None)
-        } else if marks.base.contains(BaseMark::BLOCK_REF) {
-            let block_ref = node.text_mark_block_ref_id.clone().unwrap_or_default();
-            (Some("node.text.blockref".to_string()), Some(block_ref))
-        } else if marks.base.contains(BaseMark::A) {
-            let web_link = node.text_mark_a_href.clone().unwrap_or_default();
-            (Some("node.text.weblink".to_string()), Some(web_link))
-        } else if marks.base.contains(BaseMark::TAG) {
-            (Some("node.text.tag".to_string()), None)
-        } else {
-            // 无基础样式，只有装饰样式或默认
-            (None, None)
+        // 构建样式列表：基础样式 + 装饰样式
+        let mut styles: Vec<String> = Vec::new();
+        
+        // 1. 添加基础样式（互斥，只选一个）
+        let link = match marks.base_kind() {
+            BaseMarkKind::Mark => {
+                styles.push("node.text.mark".to_string());
+                None
+            }
+            BaseMarkKind::Code => {
+                styles.push("node.text.code".to_string());
+                None
+            }
+            BaseMarkKind::BlockRef => {
+                styles.push("node.text.blockref".to_string());
+                let block_ref = node.text_mark_block_ref_id.clone().unwrap_or_default();
+                Some(block_ref)
+            }
+            BaseMarkKind::A => {
+                styles.push("node.text.weblink".to_string());
+                let web_link = node.text_mark_a_href.clone().unwrap_or_default();
+                Some(web_link)
+            }
+            BaseMarkKind::Tag => {
+                styles.push("node.text.tag".to_string());
+                None
+            }
+            BaseMarkKind::Default => None,
         };
+        
+        // 2. 添加装饰样式（可叠加）
+        if marks.decor.contains(DecorMark::STRONG) {
+            styles.push("node.text.strong".to_string());
+        }
+        if marks.decor.contains(DecorMark::EM) {
+            styles.push("node.text.italic".to_string());
+        }
+        if marks.decor.contains(DecorMark::U) {
+            styles.push("node.text.underline".to_string());
+        }
+        if marks.decor.contains(DecorMark::S) {
+            styles.push("node.text.strikethrough".to_string());
+        }
         
         let item = InLineItem {
             marks,
             content: content.to_string(),
             display_content,
             link,
-            style_name,
+            styles,
             line_break: false,
         };
         let width = item.display_content.width();
@@ -429,7 +456,7 @@ impl DocumentModel {
             content: item.content[..split_pos as usize].to_string(),
             display_content: first_display,
             link: item.link.clone(),
-            style_name: item.style_name.clone(),
+            styles: item.styles.clone(),
             line_break: false,
         };
         let second_part = InLineItem {
@@ -437,7 +464,7 @@ impl DocumentModel {
             content: item.content[split_pos as usize..].to_string(),
             display_content: second_display,
             link: item.link.clone(),
-            style_name: item.style_name.clone(),
+            styles: item.styles.clone(),
             line_break,
         };
         (first_part, second_part)
@@ -532,7 +559,7 @@ impl InLineItem {
             content: content.clone(),
             display_content: content,
             link: None,
-            style_name: Some("node.heading.title".to_string()),
+            styles: vec!["node.heading.title".to_string()],
             line_break: false,
         }
     }

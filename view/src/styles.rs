@@ -33,6 +33,39 @@ bitflags! {
     }
 }
 
+/// 基础样式类型（用于 match 匹配）
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum BaseMarkKind {
+    Default,
+    Mark,
+    Code,
+    BlockRef,
+    A,
+    Tag,
+}
+
+impl BaseMark {
+    /// 获取优先级最高的基础样式类型（按定义顺序）
+    /// 
+    /// 由于互斥组理论上只有一个标志被设置，此方法返回第一个匹配的标志
+    /// 如果多个标志被设置（异常情况），按 MARK → CODE → BLOCK_REF → A → TAG 的优先级返回
+    pub fn kind(&self) -> BaseMarkKind {
+        if self.contains(BaseMark::MARK) {
+            BaseMarkKind::Mark
+        } else if self.contains(BaseMark::CODE) {
+            BaseMarkKind::Code
+        } else if self.contains(BaseMark::BLOCK_REF) {
+            BaseMarkKind::BlockRef
+        } else if self.contains(BaseMark::A) {
+            BaseMarkKind::A
+        } else if self.contains(BaseMark::TAG) {
+            BaseMarkKind::Tag
+        } else {
+            BaseMarkKind::Default
+        }
+    }
+}
+
 /// 完整行内样式
 #[derive(Clone, Copy, Debug, Default)]
 pub struct InlineMarks {
@@ -54,6 +87,11 @@ impl InlineMarks {
     pub fn merge(&mut self, other: &InlineMarks) {
         self.base = other.base;  // 基础样式覆盖
         self.decor |= other.decor;  // 装饰样式叠加
+    }
+
+    /// 获取基础样式类型（用于 match 匹配）
+    pub fn base_kind(&self) -> BaseMarkKind {
+        self.base.kind()
     }
 }
 

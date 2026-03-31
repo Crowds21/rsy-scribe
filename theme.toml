@@ -25,9 +25,9 @@
 # ============================================
 # 基础行内样式 - 单一
 # ============================================
-"node.text.strong" = { fg = "fg", modifier = "bold" }
-"node.text.italic" = { fg = "fg", modifier = "italic" }
-"node.text.underline" = { fg = "fg", modifier = "underlined" }
+"node.text.strong" = {  modifier = "bold" }
+"node.text.italic" = { modifier = "italic" }
+"node.text.underline" = {  modifier = "underlined" }
 "node.text.mark" = { fg = "bg", bg = "yellow" }
 "node.text.code" = { fg = "green", bg = "code_bg" }
 "node.text.blockref" = { fg = "blue" }

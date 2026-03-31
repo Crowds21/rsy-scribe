@@ -110,11 +110,22 @@ impl<'a> EditorView {
                 // 只能是逐行渲染,或者按照元素类型,按块渲染,因为需要设置gutter
                 let mut rendered_line = Line::default();
                 for item in line.content.iter() {
-                    // TODO Add style
-                    let style = match &item.style_name {
-                        None => Style::default(),
-                        Some(it) => cx.theme.get(&it.clone()),
-                    };
+                    // 合并多个样式：累加修饰符，后面的颜色覆盖前面的
+                    let mut style = Style::default();
+                    for style_name in &item.styles {
+                        let theme_style = cx.theme.get(&style_name.clone());
+                        // 累加修饰符（bold, italic, underline 等）
+                        style = style
+                            .add_modifier(theme_style.add_modifier)
+                            .remove_modifier(theme_style.sub_modifier);
+                        // 颜色使用最后一个非默认值（后面的覆盖前面的）
+                        if theme_style.fg.is_some() {
+                            style = style.fg(theme_style.fg.unwrap());
+                        }
+                        if theme_style.bg.is_some() {
+                            style = style.bg(theme_style.bg.unwrap());
+                        }
+                    }
                     let span = Span::from(item.display_content.clone()).style(style);
                     rendered_line.push_span(span)
                 }
