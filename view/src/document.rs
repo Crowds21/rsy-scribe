@@ -47,7 +47,7 @@ pub struct InLineItem {
     /// 对应 theme.toml 中的样式名称列表（按优先级：基础样式 + 装饰样式）
     pub styles: Vec<String>,
     /// 是否为块内软换行
-    line_break: bool,
+    pub line_break: bool,
 }
 #[derive(Clone, Default)]
 pub struct DocumentLine {
@@ -125,6 +125,7 @@ impl DocumentModel {
             // NodeType::NodeBlockquote => {}
             // NodeType::NodeBlockquoteMarker => {}
             NodeType::NodeList => self.create_list_block_lines(node, available_width),
+            NodeType::NodeCodeBlock => self.create_code_block_lines(node, available_width),
             _ => Vec::new(),
         };
         result.append(&mut lines);
@@ -230,6 +231,40 @@ impl DocumentModel {
         }
         lines
     }
+
+    /// 创建代码块行
+    fn create_code_block_lines(&mut self, node: &Node, available_width: u16) -> Vec<DocumentLine> {
+        use crate::code_block::{parse_code_block, render_code_block, get_code_block_style};
+        use std::collections::HashMap;
+
+        let code_block = parse_code_block(node);
+        
+        // 使用默认样式（未来可以从主题加载）
+        let style = get_code_block_style(&HashMap::new());
+        
+        // 使用无高亮渲染器
+        let items = render_code_block(&code_block, available_width, &style, None);
+        
+        // 转换为 DocumentLine
+        let mut lines = Vec::new();
+        let mut current_line_items = Vec::new();
+        
+        for item in items {
+            if item.line_break {
+                if !current_line_items.is_empty() {
+                    lines.push(DocumentLine::default_with_items(current_line_items));
+                    current_line_items = Vec::new();
+                }
+            }
+            current_line_items.push(item);
+        }
+        
+        if !current_line_items.is_empty() {
+            lines.push(DocumentLine::default_with_items(current_line_items));
+        }
+        
+        lines
+    }
     fn crate_list_iterators(&mut self, node: &Node, available_width: u16) -> Vec<DocumentLine> {
         // TODO 这里返回的是 ListItem 中等待展示的Lines
         //  所以只需要对第一行插入BulletChar. 其他行插入等量的空格符
@@ -240,6 +275,8 @@ impl DocumentModel {
             NodeType::NodeList => self.create_list_block_lines(node, available_width),
             NodeType::NodeListItem => self.create_list_item_block(node, available_width),
             NodeType::NodeParagraph => self.create_paragraph_block_lines(node, available_width),
+            // TODO
+            // NodeType::NodeCodeBlock
             _ => Vec::new(),
         };
         lines = temp_result;

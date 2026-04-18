@@ -23,6 +23,7 @@
 //! - `SIYUAN_API_TOKEN` - API 令牌（可选）
 //! - `SIYUAN_API_URL` - API 基础 URL（可选，默认：http://127.0.0.1:6806）
 //! - `SIYUAN_TIMEOUT_SECS` - 超时时间（可选，默认：30）
+//! - `SIYUAN_WORKSPACE_DIR` - 思源笔记工作空间目录（可选）
 
 use std::env;
 use std::fs;
@@ -36,6 +37,8 @@ pub struct Config {
     pub base_url: String,
     pub token: String,
     pub timeout_secs: u64,
+    /// 思源笔记工作空间目录（如：/Users/crowds/Notes/SiYuanKnowledgeBase/data）
+    pub workspace_dir: Option<String>,
 }
 
 impl Default for Config {
@@ -44,6 +47,7 @@ impl Default for Config {
             base_url: "http://127.0.0.1:6806".to_string(),
             token: String::new(),
             timeout_secs: 30,
+            workspace_dir: None,
         }
     }
 }
@@ -69,6 +73,11 @@ impl ConfigBuilder {
     
     pub fn timeout_secs(mut self, secs: u64) -> Self {
         self.config.timeout_secs = secs;
+        self
+    }
+    
+    pub fn workspace_dir(mut self, dir: &str) -> Self {
+        self.config.workspace_dir = Some(dir.trim_end_matches('/').to_string());
         self
     }
     
@@ -169,6 +178,7 @@ fn parse_config_toml(content: &str) -> Result<Config, ConfigError> {
                 "base_url" => config.base_url = value.trim_end_matches('/').to_string(),
                 "token" => config.token = value.to_string(),
                 "timeout_secs" => config.timeout_secs = value.parse().unwrap_or(30),
+                "workspace_dir" => config.workspace_dir = Some(value.trim_end_matches('/').to_string()),
                 _ => {} // 忽略未知字段
             }
         }
@@ -210,6 +220,11 @@ pub fn save_to_file(config: &Config, path: Option<&Path>) -> Result<(), ConfigEr
     }
     
     // 生成 TOML 内容
+    let workspace_line = match &config.workspace_dir {
+        Some(dir) => format!("workspace_dir = \"{}\"\n", dir),
+        None => String::new(),
+    };
+    
     let content = format!(
         r#"# SiYuan 配置文件
 # 生成时间：{}
@@ -220,11 +235,12 @@ pub fn save_to_file(config: &Config, path: Option<&Path>) -> Result<(), ConfigEr
 base_url = "{}"
 token = "{}"
 timeout_secs = {}
-"#,
+{}"#,
         chrono::Local::now().format("%Y-%m-%d %H:%M:%S"),
         config.base_url,
         config.token,
-        config.timeout_secs
+        config.timeout_secs,
+        workspace_line
     );
     
     fs::write(&config_path, content).map_err(|e| {
@@ -252,6 +268,9 @@ impl Config {
         if let Ok(timeout) = env::var("SIYUAN_TIMEOUT_SECS") {
             config.timeout_secs = timeout.parse().unwrap_or(30);
         }
+        if let Ok(workspace) = env::var("SIYUAN_WORKSPACE_DIR") {
+            config.workspace_dir = Some(workspace.trim_end_matches('/').to_string());
+        }
         
         config
     }
@@ -269,6 +288,7 @@ impl Config {
         if env::var("SIYUAN_API_TOKEN").is_ok()
             || env::var("SIYUAN_API_URL").is_ok()
             || env::var("SIYUAN_TIMEOUT_SECS").is_ok()
+            || env::var("SIYUAN_WORKSPACE_DIR").is_ok()
         {
             return Self::from_env();
         }

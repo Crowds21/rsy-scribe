@@ -201,7 +201,8 @@ impl<'a> SearchBox {
             None => return EventResult::Consumed(None), // 提前返回避免无效spawn
         };
         tokio::spawn(async move {
-            let sy_nodes = syservice::file::load_json_node(&doc_path);
+            let config = syservice::config::Config::load();
+            let sy_nodes = syservice::file::load_json_node_from_workspace(&doc_path, &config);
             let open_document = move |editor: &mut EditorModel, compositor: &mut Compositor| {
                 let component = compositor.find::<EditorView>();
                 if let Some(editor_view) = component {
