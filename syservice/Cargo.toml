@@ -7,6 +7,7 @@ categories.workspace = true
 repository.workspace = true
 
 [dependencies]
+infrastructure = { path = "../infrastructure" }
 # 序列化
 serde = { version = "1", features = ["derive"] }
 serde_json = "1.0"

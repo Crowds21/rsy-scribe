@@ -7,6 +7,7 @@ use crate::compositor::{Compositor, CompositorContext, EventResult};
 use crate::debounce::{send_blocking, AsyncHook};
 use crate::job::dispatch;
 use crossterm::event::{KeyCode, KeyEvent};
+use infrastructure::log_info;
 use ratatui::{
     prelude::*,
     style::{Modifier, Style},
@@ -18,6 +19,11 @@ use unicode_width::UnicodeWidthStr;
 use view::editor::EditorModel;
 
 pub const ID: &str = "search-box";
+
+fn log_open_file_flow(message: impl AsRef<str>) {
+    log_info("tui.search_box", message.as_ref());
+}
+
 /// 可搜索的文本框组件
 #[derive(Debug)]
 pub struct SearchBox {
@@ -196,14 +202,50 @@ impl<'a> SearchBox {
     }
 
     fn load_document(&mut self) -> EventResult {
+        log_open_file_flow(format!(
+            "enter pressed; selected_result={:?}; results_len={}",
+            self.selected_result,
+            self.results.len()
+        ));
+
+        if self.results.is_empty() {
+            self.selected_result = None;
+            log_open_file_flow("abort: search results empty");
+            return EventResult::Consumed(None);
+        }
+        let max_idx = self.results.len() - 1;
+        self.selected_result = Some(self.selected_result.unwrap_or(0).min(max_idx));
+
         let doc_path = match self.selected_result.and_then(|idx| self.results.get(idx)) {
-            Some(doc_info) => format!("{}{}", doc_info.box_id, doc_info.path),
-            None => return EventResult::Consumed(None), // 提前返回避免无效spawn
+            Some(doc_info) => {
+                let box_id = doc_info.box_id.trim_matches('/');
+                let path = doc_info.path.trim_matches('/');
+                let full_path = format!("{}/{}", box_id, path);
+                log_open_file_flow(format!(
+                    "resolved doc: idx={:?}, id={}, hpath={}, path={}",
+                    self.selected_result, doc_info.id, doc_info.hpath, full_path
+                ));
+                full_path
+            }
+            None => {
+                log_open_file_flow("abort: selected index not found in results");
+                return EventResult::Consumed(None);
+            } // 提前返回避免无效spawn
         };
+        log_open_file_flow(format!("spawn loading task for doc_path={}", doc_path));
         tokio::spawn(async move {
-            let config = syservice::config::Config::load();
+            let config = syservice::config::Config::global();
+            log_open_file_flow(format!(
+                "config loaded; workspace_dir={:?}",
+                config.workspace_dir
+            ));
             let sy_nodes = syservice::file::load_json_node_from_workspace(&doc_path, &config);
+            match &sy_nodes {
+                Ok(_) => log_open_file_flow("document json loaded successfully"),
+                Err(e) => log_open_file_flow(format!("document json load failed: {}", e)),
+            }
             let open_document = move |editor: &mut EditorModel, compositor: &mut Compositor| {
+                log_open_file_flow("dispatch callback begin");
                 let component = compositor.find::<EditorView>();
                 if let Some(editor_view) = component {
                     if let Ok(node) = sy_nodes {
@@ -211,15 +253,25 @@ impl<'a> SearchBox {
                         //  Node 的渲染还是应该在 editor 中进行
                         //  如果在 editor 中进行,需要注意如果 terminal size 不变化,
                         //  那么就不需要重新展示
-                        // 
-                        let length = editor_view.content_area.width; 
+                        //
+                        let length = editor_view.content_area.width;
                         let document_id = editor.new_document(node, length);
+                        log_open_file_flow(format!(
+                            "new_document created: id={}; content_width={}",
+                            document_id, length
+                        ));
                         // editor_view.open_document(document_id);
                         compositor.pop();
+                        log_open_file_flow("search box popped after opening document");
+                    } else {
+                        log_open_file_flow("dispatch callback skipped: sy_nodes was error");
                     }
+                } else {
+                    log_open_file_flow("dispatch callback failed: editor view not found");
                 }
             };
-            dispatch(open_document).await
+            dispatch(open_document).await;
+            log_open_file_flow("dispatch callback enqueued");
         });
         EventResult::Consumed(None)
     }

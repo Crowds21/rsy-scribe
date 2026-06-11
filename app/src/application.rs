@@ -5,6 +5,7 @@ use crossterm::{
 };
 use ratatui::layout::Rect;
 use ratatui::{backend::CrosstermBackend, Terminal};
+use syservice::config::Config;
 use std::io;
 use std::panic;
 use tui::compositor::{Compositor, CompositorContext};
@@ -22,6 +23,7 @@ pub struct Application {
 }
 impl Application {
     pub fn new() -> Self {
+        let temp = Config::init_global();
         let mut stdout = io::stdout();
         execute!(stdout, EnterAlternateScreen).expect("Enter alternate screen error");
 

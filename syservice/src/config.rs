@@ -28,8 +28,22 @@
 use std::env;
 use std::fs;
 use std::path::{Path, PathBuf};
+use std::sync::OnceLock;
+use infrastructure::log_info;
 use thiserror::Error;
 use crate::api::ConfigProvider;
+
+static GLOBAL_CONFIG: OnceLock<Config> = OnceLock::new();
+
+fn config_summary(config: &Config) -> String {
+    format!(
+        "base_url={}, timeout_secs={}, workspace_dir={:?}, token_present={}",
+        config.base_url,
+        config.timeout_secs,
+        config.workspace_dir,
+        !config.token.is_empty()
+    )
+}
 
 /// SiYuan 服务配置
 #[derive(Debug, Clone)]
@@ -127,6 +141,20 @@ pub fn get_config_paths() -> Vec<PathBuf> {
             paths.push(PathBuf::from(&home).join(".config").join("scribe").join("config.toml"));
         }
     }
+
+    #[cfg(target_os = "macos")]
+    {
+        // 兼容 macOS 常见配置路径
+        if let Ok(home) = env::var("HOME") {
+            paths.push(
+                PathBuf::from(home)
+                    .join("Library")
+                    .join("Application Support")
+                    .join("scribe")
+                    .join("config.toml"),
+            );
+        }
+    }
     
     #[cfg(not(any(target_os = "windows", target_os = "macos", target_os = "linux")))]
     {
@@ -191,9 +219,18 @@ fn parse_config_toml(content: &str) -> Result<Config, ConfigError> {
 ///
 /// 按优先级检查所有可能的配置文件路径，返回第一个存在的配置文件
 pub fn load_from_default_path() -> Option<Config> {
-    for path in get_config_paths() {
+    let config_paths = get_config_paths();
+    let tried_paths = config_paths
+        .iter()
+        .map(|p| p.display().to_string())
+        .collect::<Vec<_>>()
+        .join(", ");
+    log_info("config", format!("probing config paths: {}", tried_paths));
+
+    for path in config_paths {
         if path.exists() {
             if let Ok(config) = load_from_file(&path) {
+                log_info("config", format!("config file hit: {}", path.display()));
                 return Some(config);
             }
         }
@@ -290,21 +327,45 @@ impl Config {
             || env::var("SIYUAN_TIMEOUT_SECS").is_ok()
             || env::var("SIYUAN_WORKSPACE_DIR").is_ok()
         {
-            return Self::from_env();
+            let config = Self::from_env();
+            log_info(
+                "config",
+                format!("loaded from env: {}", config_summary(&config)),
+            );
+            return config;
         }
         
         // 回退到配置文件
         if let Some(config) = Self::from_file() {
+            log_info(
+                "config",
+                format!("loaded from file: {}", config_summary(&config)),
+            );
             return config;
         }
         
         // 使用默认配置
-        Config::default()
+        let config = Config::default();
+        log_info(
+            "config",
+            format!("loaded from default: {}", config_summary(&config)),
+        );
+        config
     }
 
     /// 从环境变量或配置文件加载配置（同 `load()`）
     pub fn load_or_default() -> Self {
         Self::load()
+    }
+
+    /// 在应用启动阶段初始化全局配置，只加载一次。
+    pub fn init_global() -> &'static Self {
+        GLOBAL_CONFIG.get_or_init(Self::load)
+    }
+
+    /// 获取全局配置；若尚未初始化则惰性加载一次。
+    pub fn global() -> &'static Self {
+        GLOBAL_CONFIG.get_or_init(Self::load)
     }
 
     pub fn validate(&self) -> Result<(), ConfigError> {

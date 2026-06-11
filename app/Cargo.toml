@@ -7,6 +7,8 @@ categories.workspace = true
 repository.workspace = true
 
 [dependencies]
+infrastructure = { path = "../infrastructure" }
+syservice = {path="../syservice"}
 tui = { path = "../tui" }
 view = { path = "../view" }
 tokio = { version = "1.41.0", features = ["full"] }

@@ -1,5 +1,5 @@
 [workspace]
-members = ["app", "syservice", "tui", "view"]
+members = ["app", "infrastructure", "syservice", "tui", "view"]
 [workspace.package]
 version = "0.1.0"
 edition = "2021"

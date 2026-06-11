@@ -250,14 +250,13 @@ impl DocumentModel {
         let mut current_line_items = Vec::new();
         
         for item in items {
-            if item.line_break {
-                if !current_line_items.is_empty() {
-                    lines.push(DocumentLine::default_with_items(current_line_items));
-                    current_line_items = Vec::new();
-                }
+            if item.line_break && !current_line_items.is_empty() {
+                lines.push(DocumentLine::default_with_items(current_line_items));
+                current_line_items = Vec::new();
             }
             current_line_items.push(item);
         }
+
         
         if !current_line_items.is_empty() {
             lines.push(DocumentLine::default_with_items(current_line_items));

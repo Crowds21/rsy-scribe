@@ -1,7 +1,7 @@
-use anyhow::{anyhow, Context};
+use anyhow::anyhow;
+use infrastructure::{log_error, log_info};
 
 use super::domain::*;
-use super::*;
 use crate::config::Config;
 use std::collections::HashMap;
 use serde_json::json;
@@ -25,7 +25,7 @@ async fn create_doc_with_md(
 
     if response.status().is_success() {
         let body = response.text().await?;
-        println!("Response body: {}", body);
+        log_info("syservice.document", format!("create_doc_with_md response: {}", body));
     }
     Ok(())
 }
@@ -40,9 +40,9 @@ pub async fn search_doc_with_title(title: String) -> anyhow::Result<SyResponse, 
     map.insert("stmt", sql);
     let body = json!(map);
 
-    // 从配置加载 API 信息
-    let config = Config::load();
-    let api_url = format!("{}/api/query/sql", config.base_url);
+    // 复用应用启动时初始化的全局配置
+    let config = Config::global();
+    let api_url = format!("{}/api/query/sql", config.base_url.as_str());
 
     let client = reqwest::Client::builder()
         .no_proxy()
@@ -55,7 +55,7 @@ pub async fn search_doc_with_title(title: String) -> anyhow::Result<SyResponse, 
     
     // 如果有 token，添加认证头
     if !config.token.is_empty() {
-        request = request.header("Authorization", format!("Token {}", config.token));
+        request = request.header("Authorization", format!("Token {}", config.token.as_str()));
     }
     
     let response = request
@@ -64,8 +64,10 @@ pub async fn search_doc_with_title(title: String) -> anyhow::Result<SyResponse, 
         .map_err(|e| anyhow!("Failed to send request to {}: {}", api_url, e))?;
 
     if !response.status().is_success() {
-        println!("API returned {}: {}",
-                 response.status(), response.url());
+        log_error(
+            "syservice.document",
+            format!("API returned {}: {}", response.status(), response.url()),
+        );
         return Err(anyhow!("API returned"));
     }
 

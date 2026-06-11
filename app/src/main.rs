@@ -1,10 +1,21 @@
 use crate::application::Application;
 use crossterm::execute;
 use crossterm::terminal::{disable_raw_mode, LeaveAlternateScreen};
+use infrastructure::init_logger_with_directory;
 use std::io;
 use std::io::stdout;
 use std::panic::{set_hook, take_hook};
+use std::path::PathBuf;
 mod application;
+
+/// 项目根目录下的 `logs/`（与 `app/` 同级）。
+fn log_directory() -> PathBuf {
+    PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../logs")
+}
+
+fn init_logging() -> io::Result<()> {
+    init_logger_with_directory(log_directory())
+}
 
 fn main() -> io::Result<()> {
     let result = main_impl();
@@ -15,6 +26,7 @@ fn main() -> io::Result<()> {
 
 #[tokio::main]
 async fn main_impl() -> io::Result<()> {
+    init_logging()?;
     init_panic_hook();
     let mut app = Application::new();
     app.run().await;

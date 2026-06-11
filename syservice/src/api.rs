@@ -3,6 +3,7 @@
 //! 本模块定义了 SiYuan API 的核心接口，所有实现都必须遵循这些 Trait。
 
 use async_trait::async_trait;
+use infrastructure::{log_debug, log_error, log_info, log_warn};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::fmt::Debug;
@@ -160,7 +161,12 @@ impl Default for ConsoleLogger {
 impl Logger for ConsoleLogger {
     fn log(&self, level: LogLevel, msg: &str) {
         if level >= self.min_level {
-            println!("[{:?}] {}", level, msg);
+            match level {
+                LogLevel::Debug => log_debug("syservice.api", msg),
+                LogLevel::Info => log_info("syservice.api", msg),
+                LogLevel::Warn => log_warn("syservice.api", msg),
+                LogLevel::Error => log_error("syservice.api", msg),
+            }
         }
     }
 }

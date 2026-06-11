@@ -1,4 +1,5 @@
 use once_cell::sync::Lazy;
+use infrastructure::{log_error, log_info};
 use ratatui::prelude::Color;
 use ratatui::style::Color as RatColor;
 use ratatui::style::{Modifier, Style};
@@ -139,14 +140,14 @@ fn process_styles(
             // 背景色处理（带错误回退）
             let (bg_str, bg_scale) =
                 resolve_color("bg", &style_table, palette).unwrap_or_else(|e| {
-                    eprintln!("bg parse failed: {}", e);
+                    log_error("tui.theme", format!("bg parse failed: {}", e));
                     ("#000000".to_string(), 1.0)
                 });
 
             // 前景色处理（带错误回退）
             let (fg_str, fg_scale) =
                 resolve_color("fg", &style_table, palette).unwrap_or_else(|e| {
-                    eprintln!("fg parse failed: {}", e);
+                    log_error("tui.theme", format!("fg parse failed: {}", e));
                     ("#FFFFFF".to_string(), 1.0)
                 });
 
@@ -240,6 +241,6 @@ mod test {
             })
             .unwrap();
 
-        println!("下划线文本渲染完成");
+        log_info("tui.theme.test", "下划线文本渲染完成");
     }
 }

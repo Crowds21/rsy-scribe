@@ -1,6 +1,7 @@
 use crate::config::Config;
 use crate::lute;
 use anyhow::{Context, Result};
+use infrastructure::log_error;
 use std::path::Path;
 use std::{fs::File, io::BufReader};
 
@@ -19,7 +20,7 @@ use std::{fs::File, io::BufReader};
 /// ```rust,ignore
 /// let config = Config::load();
 /// let node = load_json_node_from_workspace(
-///     "notebooks/20230620162729-abc123/doc.sy",
+///     "20230620162729-abc123/doc.sy",
 ///     &config
 /// )?;
 /// ```
@@ -64,11 +65,13 @@ fn load_json_node_from_path(path: &Path) -> Result<lute::node::Node> {
     let file = match File::open(path) {
         Ok(f) => f,
         Err(e) => {
-            eprintln!(
-                "❌ Failed to open file: {}\n   Path: {}\n   Error: {}",
-                path.display(),
-                path.display(),
-                e
+            log_error(
+                "syservice.file",
+                format!(
+                    "Failed to open file: {}; error: {}",
+                    path.display(),
+                    e
+                ),
             );
             return Err(e).with_context(|| format!("Failed to open file: {}", path.display()));
         }
@@ -81,10 +84,9 @@ fn load_json_node_from_path(path: &Path) -> Result<lute::node::Node> {
     match serde_json::from_reader(reader) {
         Ok(node) => Ok(node),
         Err(e) => {
-            eprintln!(
-                "❌ Failed to parse JSON from: {}\n   Error: {}",
-                path.display(),
-                e
+            log_error(
+                "syservice.file",
+                format!("Failed to parse JSON from: {}; error: {}", path.display(), e),
             );
             Err(anyhow::Error::new(e).context(format!(
                 "Failed to parse JSON from: {}",
@@ -113,7 +115,7 @@ mod tests {
         let json_data = load_json_node_from_workspace(relative_path, &config).unwrap();
         
         let serialized = serde_json::to_string_pretty(&json_data).unwrap();
-        println!("{}", serialized);
+        infrastructure::log_info("syservice.file.test", serialized);
         assert!(json_data.id.is_some());
     }
 
