@@ -12,15 +12,22 @@
 
 # ============================================
 # 标题样式 (H1-H6)
+# 层级越高越醒目；装饰线用 .decor 键，颜色略淡
 # ============================================
 "node.heading.h1" = { fg = "red", modifier = "bold" }
+"node.heading.h1.decor" = { fg = "red" }
 "node.heading.h2" = { fg = "orange", modifier = "bold" }
+"node.heading.h2.decor" = { fg = "dark_red" }
 "node.heading.h3" = { fg = "yellow", modifier = "bold" }
 "node.heading.h4" = { fg = "green", modifier = "bold" }
-"node.heading.h5" = { fg = "cyan", modifier = "bold" }
-"node.heading.h6" = { fg = "blue", modifier = "bold" }
+"node.heading.h4.decor" = { fg = "dark_green" }
+"node.heading.h5" = { fg = "cyan" }
+"node.heading.h5.decor" = { fg = "gray" }
+"node.heading.h6" = { fg = "comment" }
+"node.heading.h6.decor" = { fg = "gray" }
 "node.heading.title" = { fg = "orange", modifier = "bold" }
-"node.heading" = { fg = "orange" }
+"node.heading" = { fg = "fg", modifier = "bold" }
+"node.heading.decor" = { fg = "gray" }
 
 # ============================================
 # 基础行内样式 - 单一
@@ -97,11 +104,22 @@
 "thematic_break" = { fg = "comment" }
 
 # ============================================
+# 编辑器 Gutter（行号 + 块图标）
+# ============================================
+"editor.gutter" = { fg = "gutter_fg", bg = "gutter_bg" }
+"editor.gutter.line_number" = { fg = "gutter_fg", bg = "gutter_bg" }
+"editor.gutter.icon" = { fg = "cyan", bg = "gutter_bg" }
+
+# ============================================
 # UI 元素样式
 # ============================================
 "ui.gutter" = { fg = "gutter_fg", bg = "gutter_bg" }
 "ui.gutter.DECOR" = { fg = "cyan" }
-"ui.bufferline" = { bg = "blue" }
+"ui.bufferline" = { fg = "comment", bg = "bg_lighter" }
+"ui.bufferline.active" = { fg = "fg", bg = "bg_darker", modifier = "bold" }
+"ui.bufferline.inactive" = { fg = "comment", bg = "bg_lighter" }
+"ui.bufferline.separator" = { fg = "gray", bg = "bg_lighter" }
+"ui.bufferline.empty" = { fg = "gray", bg = "bg_lighter", modifier = "italic" }
 "ui.statusbar" = { fg = "fg", bg = "bg_darker" }
 "ui.popup" = { fg = "fg", bg = "bg_darker" }
 

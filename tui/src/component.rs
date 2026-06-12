@@ -1,8 +1,7 @@
-pub mod block;
+pub mod buffer_line;
 pub mod editor;
 pub mod gutter;
 pub mod search_box;
-mod scroll;
 
 use crate::compositor::{Callback, CompositorContext, EventResult};
 use crossterm::event::{Event, KeyEvent};

@@ -13,6 +13,7 @@
 | 001 | [代码块渲染设计](design/001-code-block-rendering.md) | 评审中 | 2026-03-31 |
 | 002 | [行内样式重构](design/002-inline-styles.md) | 已实现 | 2026-03-31 |
 | 003 | [配置系统设计](design/003-config-system.md) | 已实现 | 2026-03-31 |
+| 004 | [项目结构审查](design/004-project-structure-review.md) | 滚动已修复 | 2026-06-12 |
 
 ### 用户文档
 

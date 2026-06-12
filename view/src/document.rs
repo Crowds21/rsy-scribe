@@ -32,6 +32,8 @@ pub struct DocumentModel {
     pub node: Option<Node>,
     /// 最大长度
     pub max_line_len: u16,
+    /// 打开文档时的展示名（如 hpath 或文件名）
+    pub source_label: String,
 }
 
 #[derive(Clone, Default)]
@@ -61,8 +63,23 @@ pub struct DocumentLine {
     container: NodeType,
     /// 缩进.List类型的元素在换行时需要保持缩进
     indent_width: u16,
+    /// 是否为块的首行（用于 gutter 图标）
+    pub block_start: bool,
+    /// 标题级别（仅 NodeHeading 块有效）
+    pub heading_level: Option<u8>,
 }
 impl DocumentLine {
+    pub fn node_type(&self) -> NodeType {
+        self.node_type
+    }
+
+    pub fn is_block_start(&self) -> bool {
+        self.block_start
+    }
+
+    pub fn heading_level(&self) -> Option<u8> {
+        self.heading_level
+    }
     fn default_with_item(item: InLineItem) -> DocumentLine {
         let flag = item.line_break;
         DocumentLine {
@@ -71,29 +88,75 @@ impl DocumentLine {
             break_line: flag,
             container: Default::default(),
             indent_width: 0,
+            block_start: false,
+            heading_level: None,
         }
     }
-    fn default_with_items(items: Vec<InLineItem>) -> DocumentLine {
+
+    pub(crate) fn default_with_items(items: Vec<InLineItem>) -> DocumentLine {
         DocumentLine {
             content: items,
             node_type: Default::default(),
             break_line: false,
             container: Default::default(),
             indent_width: 0,
+            block_start: false,
+            heading_level: None,
         }
     }
+
+    pub(crate) fn decoration_line(display: String) -> DocumentLine {
+        DocumentLine::default_with_items(vec![InLineItem {
+            marks: InlineMarks::default(),
+            content: display.clone(),
+            display_content: display,
+            link: None,
+            styles: Vec::new(),
+            line_break: false,
+        }])
+    }
 }
+
+fn mark_block_lines(lines: &mut [DocumentLine], node_type: NodeType, heading_level: Option<u8>) {
+    if lines.is_empty() {
+        return;
+    }
+    lines[0].block_start = true;
+    tag_lines(lines, node_type, heading_level);
+}
+
+fn tag_lines(lines: &mut [DocumentLine], node_type: NodeType, heading_level: Option<u8>) {
+    for line in lines.iter_mut() {
+        line.node_type = node_type;
+        line.heading_level = heading_level;
+    }
+}
+
 impl DocumentModel {
-    pub fn open(mut node: Node, id: DocumentId, line_len: u16) -> Self {
+    pub fn open(mut node: Node, id: DocumentId, line_len: u16, source_label: String) -> Self {
         node.set_node_type_for_tree();
         let mut doc = DocumentModel {
             id,
             lines: vec![],
             node: Some(node),
             max_line_len: line_len,
+            source_label,
         };
         doc.parse_ast_root_node(line_len);
         doc
+    }
+
+    /// 顶部 buffer 栏展示名：优先 source_label，其次 AST title
+    pub fn display_name(&self) -> String {
+        if !self.source_label.is_empty() {
+            return self.source_label.clone();
+        }
+        self.node
+            .as_ref()
+            .and_then(|n| n.properties.as_ref())
+            .and_then(|map| map.get("title"))
+            .cloned()
+            .unwrap_or_else(|| format!("Document {}", self.id))
     }
     /// 将 SY AST 转换为  DocumentModel 的入口
     ///
@@ -118,7 +181,9 @@ impl DocumentModel {
         let mut lines = match node.node_type {
             // NodeType::Default => {}
             // NodeType::NodeDocument => {}
-            NodeType::NodeParagraph => self.create_paragraph_block_lines(node, available_width),
+            NodeType::NodeParagraph => {
+                self.create_paragraph_block_lines(node, available_width)
+            }
             NodeType::NodeHeading => self.create_head_block_lines(node, available_width),
             // NodeType::NodeHeadingC8hMarker => {}
             // NodeType::NodeThematicBreak => {}
@@ -150,69 +215,34 @@ impl DocumentModel {
             break_line: false,
             container: Default::default(),
             indent_width: 0,
+            block_start: false,
+            heading_level: None,
         };
         let content: Vec<InLineItem> = vec![InLineItem::default_title(title.clone())];
-        let title_line = DocumentLine::default_with_items(content);
+        let mut title_line = DocumentLine::default_with_items(content);
+        title_line.block_start = true;
+        title_line.node_type = NodeType::NodeDocument;
         let bottom_decoration_line = top_decoration_line.clone();
         vec![top_decoration_line, title_line, bottom_decoration_line]
     }
     /// 创建标题块对应的行
     fn create_head_block_lines(&mut self, node: &Node, line_width: u16) -> Vec<DocumentLine> {
-        // 处理逻辑与 paragraph block 一致
+        use crate::heading::{
+            apply_heading_styles, decorate_heading, heading_level_from_node,
+        };
+
+        let level = heading_level_from_node(node);
         let items = self.create_inline_items(node);
         let mut content_lines = DocumentModel::split_item_to_document_lines(items, line_width);
-        // TODO 标题块整体的颜色样式怎么处理 ? 渲染的时候手动添加?
-        //  行内元素的多级嵌套怎么处理
-        content_lines
-            .iter_mut()
-            .for_each(|it| it.node_type = NodeType::NodeHeading);
-        // 添加装饰线
+
         if !content_lines.is_empty() {
             let length = utils::calculate_line_width(content_lines.first().unwrap());
-            self.decorate_heading_line(node, length, &mut content_lines)
+            decorate_heading(level, length, &mut content_lines);
         }
+
+        apply_heading_styles(&mut content_lines, level);
+        mark_block_lines(&mut content_lines, NodeType::NodeHeading, Some(level));
         content_lines
-    }
-    fn decorate_heading_line(
-        &mut self,
-        node: &Node,
-        content_length: u16,
-        content: &mut Vec<DocumentLine>,
-    ) {
-        if node.heading_level.is_none() {
-            return;
-        }
-        /// vec<DocumentLine> 前后插入修饰线
-        fn add_decoration(
-            decorate: &str,
-            content: &mut Vec<DocumentLine>,
-            length: u16,
-        ) {
-            let mut before_heading = DocumentLine::default();
-            let decoration_line = decorate.repeat(length as usize);
-            let decoration_item = InLineItem {
-                marks: InlineMarks::default(),
-                content: decoration_line.clone(),
-                display_content: decoration_line,
-                link: None,
-                styles: Vec::new(),
-                line_break: false,
-            };
-            before_heading.content = vec![decoration_item];
-            let after_heading = before_heading.clone();
-            content.insert(0, before_heading);
-            content.push(after_heading);
-        }
-        let level = node.heading_level.unwrap();
-        match level {
-            1 => add_decoration("=", content, content_length),
-            2 => add_decoration("=", content, content_length),
-            3 => add_decoration("=", content, content_length),
-            4 => add_decoration("~", content, content_length),
-            5 => add_decoration("-", content, content_length),
-            6 => add_decoration("-", content, content_length),
-            _ => {}
-        }
     }
     fn create_paragraph_block_lines(
         &mut self,
@@ -220,7 +250,9 @@ impl DocumentModel {
         available_width: u16,
     ) -> Vec<DocumentLine> {
         let items = self.create_inline_items(node);
-        DocumentModel::split_item_to_document_lines(items, available_width)
+        let mut lines = DocumentModel::split_item_to_document_lines(items, available_width);
+        tag_lines(&mut lines, NodeType::NodeParagraph, None);
+        lines
     }
     fn create_list_block_lines(&mut self, node: &Node, line_width: u16) -> Vec<DocumentLine> {
         let mut lines: Vec<DocumentLine> = Vec::new();
@@ -229,6 +261,7 @@ impl DocumentModel {
             let mut temp_result = self.crate_list_iterators(child, line_width);
             lines.append(&mut temp_result);
         }
+        tag_lines(&mut lines, NodeType::NodeList, None);
         lines
     }
 
@@ -260,7 +293,13 @@ impl DocumentModel {
         if !current_line_items.is_empty() {
             lines.push(DocumentLine::default_with_items(current_line_items));
         }
-        
+
+        let is_multiline = code_block.lines.len() > 1;
+        if is_multiline {
+            mark_block_lines(&mut lines, NodeType::NodeCodeBlock, None);
+        } else {
+            tag_lines(&mut lines, NodeType::NodeCodeBlock, None);
+        }
         lines
     }
     fn crate_list_iterators(&mut self, node: &Node, available_width: u16) -> Vec<DocumentLine> {
@@ -268,16 +307,13 @@ impl DocumentModel {
         //  所以只需要对第一行插入BulletChar. 其他行插入等量的空格符
         //  但是这里没法考虑多级缩进的问题
         //  否则就需要在创建 Paragraph 前就获取到缩进,并且知道是第几层缩进
-        let mut lines: Vec<DocumentLine> = Vec::new();
-        let temp_result = match node.node_type {
+        match node.node_type {
             NodeType::NodeList => self.create_list_block_lines(node, available_width),
             NodeType::NodeListItem => self.create_list_item_block(node, available_width),
             NodeType::NodeParagraph => self.create_paragraph_block_lines(node, available_width),
             NodeType::NodeCodeBlock => self.create_code_block_lines(node, available_width),
             _ => Vec::new(),
-        };
-        lines = temp_result;
-        lines
+        }
     }
     fn create_list_item_block(&mut self, node: &Node, available_width: u16) -> Vec<DocumentLine> {
         use crate::code_block::LIST_ITEM_PREFIX_WIDTH;
@@ -465,6 +501,8 @@ impl DocumentModel {
                     break_line: false,
                     container: Default::default(),
                     indent_width: 0,
+                    block_start: false,
+                    heading_level: None,
                 });
                 current_line = vec![sub_second_part];
                 current_width = utils::calculate_items_width(&current_line);
@@ -478,6 +516,8 @@ impl DocumentModel {
                 break_line: false,
                 container: Default::default(),
                 indent_width: 0,
+                block_start: false,
+                heading_level: None,
             });
         }
         result

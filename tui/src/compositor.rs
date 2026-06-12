@@ -22,11 +22,14 @@ pub struct Compositor {
     // 其他元素的 Area 应该都是通过这个 Rect
     // 以固定的方式计算得出的.
     pub area: Rect,
+    /// 当前文档垂直滚动偏移（行号）
+    pub scroll: u16,
 }
 /// 全局状态管理
 pub struct CompositorContext<'a> {
     pub editor_model: &'a mut EditorModel,
     pub theme: Theme,
+    pub icons: crate::uiconfig::Icons,
     /// 偏移量. 即从第几行开始展示原文档
     /// TODO Helix command::scroll
     pub scroll: Option<u16>,
@@ -36,7 +39,7 @@ impl<'a> Compositor {
     pub fn new(area: Rect) -> Compositor {
         let editor: Box<dyn Component> = Box::new(EditorView::new());
         let layers = vec![editor];
-        Self { layers, area }
+        Self { layers, area, scroll: 0 }
     }
     /// UI 组合器从下往上逐层绘制组件
     /// TODO 如果事件被顶层 Layer 消费,

@@ -1,34 +1,10 @@
 use anyhow::anyhow;
-use infrastructure::{log_error, log_info};
+use infrastructure::log_error;
 
 use super::domain::*;
 use crate::config::Config;
 use std::collections::HashMap;
 use serde_json::json;
-
-
-
-async fn create_doc_with_md(
-    notebook: String,
-    path: String,
-    markdown: String,
-) -> anyhow::Result<()> {
-    let url = "/api/filetree/createDocWithMd";
-
-    let mut map = HashMap::new();
-    map.insert("notebook", notebook);
-    map.insert("path", path);
-    map.insert("markdown", markdown);
-
-    let client = reqwest::Client::new();
-    let response = client.post(url).json(&map).send().await?;
-
-    if response.status().is_success() {
-        let body = response.text().await?;
-        log_info("syservice.document", format!("create_doc_with_md response: {}", body));
-    }
-    Ok(())
-}
 
 pub async fn search_doc_with_title(title: String) -> anyhow::Result<SyResponse, anyhow::Error> {
     let sql = format!(

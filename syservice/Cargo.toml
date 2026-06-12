@@ -30,12 +30,6 @@ thiserror = "2"
 chrono = { version = "0.4", features = ["serde"] }
 rand = "0.9"
 strum = { version = "0.27", features = ["derive"] }
-ropey = "1.6"
-rangemap = { version = "1", features = ["serde1"] }
-
-# 配置管理
-dotenvy = "0.15"
-dirs = "6"
 
 [dev-dependencies]
 tokio-test = "0.4"

@@ -7,10 +7,8 @@ use view::editor::EditorModel;
 
 type Callback = Box<dyn FnOnce(&mut EditorModel, &mut Compositor) + Send + 'static>;
 
-pub type EditorCallback = Box<dyn FnOnce(&mut EditorModel) + Send>;
 /// 全局任务队列
 pub struct JobQueue {
-    // pub tx: Sender<Callback>,
     pub callbacks: Receiver<Callback>,
 }
 
@@ -24,7 +22,7 @@ impl JobQueue {
         match call {
             Ok(None) => {}
             Ok(Some(call)) => call(editor_model, compositor),
-            Err(e) => {}
+            Err(_) => {}
         }
     }
 
@@ -34,35 +32,16 @@ impl JobQueue {
         let _ = JOB_QUEUE.set(tx);
         Self { callbacks: rx }
     }
-
-    pub fn handle_callbacks(compositor: &mut Compositor) {
-        todo!()
-    }
-    fn process_callbacks(mut rx: Receiver<Callback>, compositor: &mut Compositor) {
-        // while let Some(callback) = rx.recv().await {
-        //     callback(compositor); // 执行回调
-        // }
-        todo!()
-    }
 }
 
-pub(crate) static JOB_QUEUE: RunTimeLocal<OnceCell<Sender<Callback>>> = {
-    RunTimeLocal {
-        __data: (OnceCell::new()),
-    }
+pub(crate) static JOB_QUEUE: RunTimeLocal<OnceCell<Sender<Callback>>> = RunTimeLocal {
+    __data: OnceCell::new(),
 };
-
 
 pub async fn dispatch(job: impl FnOnce(&mut EditorModel, &mut Compositor) + Send + 'static) {
     let _ = JOB_QUEUE.wait().send(Box::new(job)).await;
 }
-pub async fn dispatch_(job: impl FnOnce(&mut Compositor) + 'static) {}
 
-///
-// pub fn dispatch_blocking(job: impl FnOnce(&mut Compositor) + Send + 'static) {
-//     let jobs = JOB_QUEUE
-//         .wait().blocking_send(Box::new(job));
-// }
 pub struct RunTimeLocal<T: 'static> {
     pub __data: T,
 }

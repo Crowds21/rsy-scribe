@@ -1,11 +1,11 @@
 use ratatui::layout::Rect;
-use ratatui::prelude::{Color, Span, Style};
-use ratatui::widgets::{Block, Borders, Paragraph};
+use ratatui::prelude::{Line, Style};
+use ratatui::text::Span;
+use ratatui::widgets::Paragraph;
 use ratatui::Frame;
-use unicode_width::UnicodeWidthStr;
+use view::document::DocumentLine;
 
-/// 为每一行生成对应的GUtter 样式
-pub type GutterFn<'doc> = Box<dyn FnMut(usize, bool, bool, &mut String) -> Option<Style> + 'doc>;
+use crate::uiconfig::Icons;
 
 /// 编辑器侧边栏
 pub struct GutterConfig {
@@ -14,50 +14,57 @@ pub struct GutterConfig {
 }
 
 pub enum GutterType {
-    /// Block type icons
+    /// 行号
+    LineNumber,
+    /// 块类型 nerd 图标（仅块首行）
     Icon,
-    /// Show one blank space
+    /// 空白列
     Spacer,
 }
+
 impl Default for GutterConfig {
     fn default() -> Self {
         Self {
-            layout: vec![
-                // GutterType::LineNumbers,
-                GutterType::Spacer,
-                GutterType::Icon,
-            ],
+            layout: vec![GutterType::LineNumber, GutterType::Icon],
         }
     }
 }
 
-/// TODO 渲染Gutter区域. 
-///  渲染组件时,渲染对应的 icon
-///  空隙
-pub fn render_gutter(frame: &mut Frame, area: Rect, config: &GutterConfig, total_lines: usize) {
-    let mut x_offset = area.x;
-    let height = area.height as usize;
-    for gutter_type in &config.layout {
-        let (width, content) = match gutter_type {
-            GutterType::Spacer => {
-                (1, "\n".repeat(height - 1)) // 1字符宽的空白
-            }
-            GutterType::Icon => {
-                let mut text = String::new();
-                let icon_span = "󰘹 \n".width() as u16;
-                for visual_line in 0..height {
-                    let doc_line = visual_line + 1;
-                    if doc_line <= total_lines {
-                        let icon_span = "󰘹 \n";
-                        // 简单实现：每行显示一个符号
-                        text.push_str(icon_span); // 左对齐并填充空格
-                    }
-                }
-                (icon_span, text)
-            }
-        };
+fn line_number_width(total_lines: usize) -> u16 {
+    let digits = (total_lines.max(1) as f64).log10().floor() as u16 + 1;
+    digits.max(3) + 1
+}
 
-        // 渲染当前Gutter部分
+pub fn gutter_total_width(total_lines: usize, config: &GutterConfig) -> u16 {
+    config
+        .layout
+        .iter()
+        .map(|t| t.column_width(total_lines))
+        .sum()
+}
+
+pub fn render_gutter(
+    frame: &mut Frame,
+    area: Rect,
+    config: &GutterConfig,
+    doc_lines: &[DocumentLine],
+    scroll_offset: u16,
+    icons: &Icons,
+    gutter_style: Style,
+    line_number_style: Style,
+    icon_style: Style,
+) {
+    use ratatui::widgets::Block;
+
+    // Gutter 背景，与正文区域区分
+    frame.render_widget(Block::default().style(gutter_style), area);
+
+    let height = area.height as usize;
+    let total_lines = doc_lines.len();
+    let mut x_offset = area.x;
+
+    for gutter_type in &config.layout {
+        let width = gutter_type.column_width(total_lines);
         let gutter_area = Rect {
             x: x_offset,
             y: area.y,
@@ -65,20 +72,51 @@ pub fn render_gutter(frame: &mut Frame, area: Rect, config: &GutterConfig, total
             height: area.height,
         };
 
-        frame.render_widget(
-            Paragraph::new(content.trim_end()).block(Block::default().style(Style::default())),
-            gutter_area,
-        );
+        let paragraph = match gutter_type {
+            GutterType::LineNumber => {
+                let num_width = line_number_width(total_lines) - 1;
+                let mut lines = Vec::with_capacity(height);
+                for visual_line in 0..height {
+                    let doc_idx = scroll_offset as usize + visual_line;
+                    if doc_idx < total_lines {
+                        let num = doc_idx + 1;
+                        let text = format!("{:>width$} ", num, width = num_width as usize);
+                        lines.push(Line::from(Span::styled(text, line_number_style)));
+                    } else {
+                        lines.push(Line::from(Span::styled("", line_number_style)));
+                    }
+                }
+                Paragraph::new(lines)
+            }
+            GutterType::Icon => {
+                let mut lines = Vec::with_capacity(height);
+                for visual_line in 0..height {
+                    let doc_idx = scroll_offset as usize + visual_line;
+                    let icon = doc_lines
+                        .get(doc_idx)
+                        .and_then(|line| icons.for_document_line(line))
+                        .unwrap_or(" ");
+                    lines.push(Line::from(Span::styled(format!("{icon} "), icon_style)));
+                }
+                Paragraph::new(lines)
+            }
+            GutterType::Spacer => {
+                let text = " \n".repeat(height.saturating_sub(1));
+                Paragraph::new(text).style(gutter_style)
+            }
+        };
 
+        frame.render_widget(paragraph, gutter_area);
         x_offset += width;
     }
 }
 
 impl GutterType {
-    fn width(&self, total_lines: usize) -> u16 {
+    fn column_width(&self, total_lines: usize) -> u16 {
         match self {
+            GutterType::LineNumber => line_number_width(total_lines),
+            GutterType::Icon => 2,
             GutterType::Spacer => 1,
-            GutterType::Icon => 1,
         }
     }
 }

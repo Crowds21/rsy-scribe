@@ -10,7 +10,6 @@ pub mod document;
 pub mod domain;
 pub mod error;
 pub mod file;
-mod handler;
 pub mod lute;
 pub mod test_utils;
 

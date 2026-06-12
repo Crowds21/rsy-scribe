@@ -21,22 +21,38 @@ pub struct EditorModel {
 impl EditorModel {
     /// Create new document by given SY Node. Return a documentId which has not used yet.
     ///
-    pub fn new_document(&mut self, node: Node, available_width: u16) -> DocumentId {
+    pub fn new_document(
+        &mut self,
+        node: Node,
+        available_width: u16,
+        source_label: String,
+    ) -> DocumentId {
         let id = self.next_document_id;
         // Safety: adding 1 from 1 is fine, probably impossible to reach usize max
         self.next_document_id =
             DocumentId(unsafe { NonZeroUsize::new_unchecked(self.next_document_id.0.get() + 1) });
 
-        let doc = DocumentModel::open(node, id, available_width);
+        let doc = DocumentModel::open(node, id, available_width, source_label);
         self.documents.insert(id, doc);
         self.current_id = Some(id);
         id
     }
-    /// 所当前文档所需要占用的总行数大小
+
+    pub fn get_current_document(&self) -> Option<&DocumentModel> {
+        self.current_id.and_then(|id| self.documents.get(&id))
+    }
+
+    /// 已打开文档的展示名，用于 buffer 栏
+    pub fn open_document_labels(&self) -> Vec<(DocumentId, String)> {
+        self.documents
+            .iter()
+            .map(|(id, doc)| (*id, doc.display_name()))
+            .collect()
+    }
+    /// 所当前文档所需要占用的总行数
     pub fn get_current_doc_height(&self) -> u16 {
-        let doc_model = self.documents.get(&self.next_document_id);
-        if let Some(doc) = doc_model {
-            return doc.lines.len() as u16;
+        if let Some(id) = self.current_id {
+            return self.get_doc_height(&id);
         }
         0
     }

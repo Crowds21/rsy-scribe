@@ -1,5 +1,5 @@
 use once_cell::sync::Lazy;
-use infrastructure::{log_error, log_info};
+use infrastructure::log_error;
 use ratatui::prelude::Color;
 use ratatui::style::Color as RatColor;
 use ratatui::style::{Modifier, Style};
@@ -240,7 +240,5 @@ mod test {
                 f.render_widget(paragraph, Rect::new(0, 0, 30, 5));
             })
             .unwrap();
-
-        log_info("tui.theme.test", "下划线文本渲染完成");
     }
 }

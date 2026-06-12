@@ -23,7 +23,7 @@ pub struct Application {
 }
 impl Application {
     pub fn new() -> Self {
-        let temp = Config::init_global();
+        let _ = Config::init_global();
         let mut stdout = io::stdout();
         execute!(stdout, EnterAlternateScreen).expect("Enter alternate screen error");
 
@@ -63,10 +63,13 @@ impl Application {
 
     /// 事件处理
     async fn handle_terminal_events(&mut self, event: Event) {
-        let mut compositor_context = CompositorContext {
-            editor_model: &mut self.editor_model,
-            scroll: None,
-            theme: Default::default(),
+        let compositor = &mut self.compositor;
+        let editor_model = &mut self.editor_model;
+        let mut cx = CompositorContext {
+            editor_model,
+            scroll: Some(compositor.scroll),
+            theme: tui::uiconfig::theme::Theme::default(),
+            icons: tui::uiconfig::Icons::default(),
         };
         match event {
             Event::Resize(width, height) => {
@@ -74,35 +77,41 @@ impl Application {
                     .resize(Rect::new(0, 0, width, height))
                     .expect("Unable to resize terminal");
                 let area = self.terminal.size().expect("couldn't get terminal size");
-
-                self.compositor.resize(area);
-                self.compositor
-                    .handle_event(&Event::Resize(width, height), &mut compositor_context);
+                compositor.resize(area);
+                compositor.handle_event(&Event::Resize(width, height), &mut cx);
             }
             Event::Key(key) => {
                 if key.modifiers == KeyModifiers::CONTROL && key.code == KeyCode::Char('c') {
-                    self.compositor
-                        .handle_event(&event, &mut compositor_context);
+                    compositor.handle_event(&event, &mut cx);
                     self.exit_app();
                     return;
                 }
-                self.compositor
-                    .handle_event(&event, &mut compositor_context);
+                compositor.handle_event(&event, &mut cx);
             }
             _ => {}
         }
+        if let Some(scroll) = cx.scroll {
+            compositor.scroll = scroll;
+        }
     }
+
     /// 进行绘制
     pub async fn render(&mut self) {
-        let mut compositor_context = CompositorContext {
-            editor_model: &mut self.editor_model,
-            scroll: None,
-            theme: tui::uiconfig::theme::Theme::default(),
-        };
-        // self.terminal.draw(pos).unwrap();
-        self.terminal
+        let terminal = &mut self.terminal;
+        let compositor = &mut self.compositor;
+        let editor_model = &mut self.editor_model;
+        terminal
             .draw(|f| {
-                self.compositor.render(f, f.size(), &mut compositor_context);
+                let mut cx = CompositorContext {
+                    editor_model,
+                    scroll: Some(compositor.scroll),
+                    theme: tui::uiconfig::theme::Theme::default(),
+                    icons: tui::uiconfig::Icons::default(),
+                };
+                compositor.render(f, f.size(), &mut cx);
+                if let Some(scroll) = cx.scroll {
+                    compositor.scroll = scroll;
+                }
             })
             .expect("rendering error");
     }

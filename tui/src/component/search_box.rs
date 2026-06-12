@@ -225,12 +225,23 @@ impl<'a> SearchBox {
                     "resolved doc: idx={:?}, id={}, hpath={}, path={}",
                     self.selected_result, doc_info.id, doc_info.hpath, full_path
                 ));
-                full_path
+                (full_path, doc_info.hpath.clone(), doc_info.path.clone())
             }
             None => {
                 log_open_file_flow("abort: selected index not found in results");
                 return EventResult::Consumed(None);
-            } // 提前返回避免无效spawn
+            }
+        };
+        let (doc_path, hpath, raw_path) = doc_path;
+        let source_label = if !hpath.is_empty() {
+            hpath
+        } else {
+            raw_path
+                .rsplit('/')
+                .next()
+                .unwrap_or(&raw_path)
+                .trim_end_matches(".sy")
+                .to_string()
         };
         log_open_file_flow(format!("spawn loading task for doc_path={}", doc_path));
         tokio::spawn(async move {
@@ -255,12 +266,13 @@ impl<'a> SearchBox {
                         //  那么就不需要重新展示
                         //
                         let length = editor_view.content_area.width;
-                        let document_id = editor.new_document(node, length);
+                        let document_id =
+                            editor.new_document(node, length, source_label.clone());
                         log_open_file_flow(format!(
                             "new_document created: id={}; content_width={}",
                             document_id, length
                         ));
-                        // editor_view.open_document(document_id);
+                        compositor.scroll = 0;
                         compositor.pop();
                         log_open_file_flow("search box popped after opening document");
                     } else {

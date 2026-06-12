@@ -1,7 +1,9 @@
 use std::fs;
 use std::path::Path;
 use once_cell::sync::Lazy;
+use syservice::lute::node::NodeType;
 use toml::Value;
+use view::document::DocumentLine;
 
 pub static DEFAULT_ICON_DATA: Lazy<Value> = Lazy::new(|| {
     let bytes = include_bytes!("../../../icons.toml");
@@ -75,6 +77,27 @@ impl Icons {
             code_block: get_icon("code_block"),
             table: get_icon("table"),
         })
+    }
+
+    /// 块首行对应的 nerd 图标（仅文档标题、标题块、多行代码块）
+    pub fn for_document_line(&self, line: &DocumentLine) -> Option<&str> {
+        if !line.is_block_start() {
+            return None;
+        }
+        match line.node_type() {
+            NodeType::NodeDocument => Some(&self.outline),
+            NodeType::NodeHeading => match line.heading_level() {
+                Some(1) => Some(&self.head1),
+                Some(2) => Some(&self.head2),
+                Some(3) => Some(&self.head3),
+                Some(4) => Some(&self.head4),
+                Some(5) => Some(&self.head5),
+                Some(6) => Some(&self.head6),
+                _ => Some(&self.head1),
+            },
+            NodeType::NodeCodeBlock => Some(&self.code_block),
+            _ => None,
+        }
     }
 }
 impl Default for Icons {

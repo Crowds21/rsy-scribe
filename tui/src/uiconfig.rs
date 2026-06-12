@@ -1,8 +1,6 @@
-use syservice::lute::node::{Node, NodeType};
-
 mod icons;
-mod styles;
 pub mod theme;
+pub use icons::Icons;
 
 // pub fn get_block_level_item_style_key(node: &Node) {
 //     match node.node_type {
