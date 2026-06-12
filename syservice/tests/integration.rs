@@ -15,7 +15,7 @@
 use syservice::prelude::*;
 
 fn create_client() -> HttpClient {
-    // 从环境变量或配置文件加载配置
+    // 从配置文件加载配置
     let config = Config::load();
     HttpClient::new(&config).expect("Failed to create HTTP client")
 }

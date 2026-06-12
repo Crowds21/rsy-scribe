@@ -245,19 +245,18 @@ impl DocumentModel {
         // 使用无高亮渲染器
         let items = render_code_block(&code_block, available_width, &style, None);
         
-        // 转换为 DocumentLine
+        // 转换为 DocumentLine（line_break 表示该行结束）
         let mut lines = Vec::new();
         let mut current_line_items = Vec::new();
-        
+
         for item in items {
-            if item.line_break && !current_line_items.is_empty() {
+            current_line_items.push(item.clone());
+            if item.line_break {
                 lines.push(DocumentLine::default_with_items(current_line_items));
                 current_line_items = Vec::new();
             }
-            current_line_items.push(item);
         }
 
-        
         if !current_line_items.is_empty() {
             lines.push(DocumentLine::default_with_items(current_line_items));
         }
@@ -274,17 +273,20 @@ impl DocumentModel {
             NodeType::NodeList => self.create_list_block_lines(node, available_width),
             NodeType::NodeListItem => self.create_list_item_block(node, available_width),
             NodeType::NodeParagraph => self.create_paragraph_block_lines(node, available_width),
-            // TODO
-            // NodeType::NodeCodeBlock
+            NodeType::NodeCodeBlock => self.create_code_block_lines(node, available_width),
             _ => Vec::new(),
         };
         lines = temp_result;
         lines
     }
     fn create_list_item_block(&mut self, node: &Node, available_width: u16) -> Vec<DocumentLine> {
+        use crate::code_block::LIST_ITEM_PREFIX_WIDTH;
+
         let mut result: Vec<DocumentLine> = Vec::new();
+        // 列表前缀占用 2 列，子块渲染时需扣除以保证整行不超出终端宽度
+        let child_width = available_width.saturating_sub(LIST_ITEM_PREFIX_WIDTH);
         for child in node.children.iter() {
-            let mut temp = self.crate_list_iterators(child, available_width);
+            let mut temp = self.crate_list_iterators(child, child_width);
             result.append(&mut temp);
         }
         let bullet_char = node

@@ -17,6 +17,7 @@ html-escape = "0.2.13"
 crossterm = "0.27.0"
 bitflags = "2.4"
 base64 = "0.21"
+toml = "0.8"
 
 [[example]]
 name = "test_styles"

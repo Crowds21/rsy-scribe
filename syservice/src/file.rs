@@ -32,7 +32,7 @@ pub fn load_json_node_from_workspace(
     let workspace_dir = config.workspace_dir.as_ref().ok_or_else(|| {
         anyhow::anyhow!(
             "Workspace directory not configured.\n   \
-             Set SIYUAN_WORKSPACE_DIR environment variable or add 'workspace_dir' to config file"
+             Add 'workspace_dir' to config file"
         )
     })?;
     

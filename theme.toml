@@ -75,6 +75,8 @@
 # 代码块样式
 # ============================================
 "code.block" = { fg = "fg", bg = "bg_darker" }
+"code.block.border" = { fg = "fg" }
+"code.block.header" = { fg = "comment" }
 "code.block.fence" = { fg = "comment" }
 "code.block.content" = { fg = "green" }
 "code.block.info" = { fg = "cyan" }

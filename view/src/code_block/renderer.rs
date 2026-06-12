@@ -1,24 +1,28 @@
 //! 代码块渲染器
 //!
-//! 将 CodeBlockModel 渲染为带样式的行。
+//! 将 CodeBlockModel 渲染为带完整外框、按终端宽度换行的行。
 
+use super::layout::{
+    box_width, format_content_row, format_footer, format_header, inner_content_width,
+    split_by_display_width, ContentRowParts, HeaderParts,
+};
 use super::model::CodeBlockModel;
 use super::highlight::{SyntaxHighlighter, NoOpHighlighter, StyledLine};
 use crate::document::InLineItem;
 use ratatui::style::Style;
+use unicode_width::UnicodeWidthStr;
+
+const STYLE_BORDER: &str = "code.block.border";
+const STYLE_HEADER: &str = "code.block.header";
+const STYLE_INFO: &str = "code.block.info";
+const STYLE_CONTENT: &str = "code.block.content";
 
 /// 代码块样式配置
-///
-/// 用于定义代码块的容器样式（边框、背景、头部等）。
 #[derive(Clone, Debug)]
 pub struct CodeBlockStyle {
-    /// 边框样式
     pub border_style: Style,
-    /// 头部样式（语言标识）
     pub header_style: Style,
-    /// 背景样式
     pub background: Style,
-    /// 代码内容样式
     pub content_style: Style,
 }
 
@@ -33,139 +37,83 @@ impl Default for CodeBlockStyle {
     }
 }
 
-/// 渲染代码块
-///
-/// # Arguments
-///
-/// * `code_block` - 代码块模型
-/// * `available_width` - 可用显示宽度
-/// * `style` - 样式配置
-/// * `highlighter` - 语法高亮器（可选）
-///
-/// # Returns
-///
-/// 返回渲染后的 InLineItem 向量
+/// 渲染代码块；每行宽度不超过 `available_width`。
 pub fn render_code_block(
     code_block: &CodeBlockModel,
     available_width: u16,
-    style: &CodeBlockStyle,
+    _style: &CodeBlockStyle,
     highlighter: Option<&dyn SyntaxHighlighter>,
 ) -> Vec<InLineItem> {
+    let box_w = box_width(available_width);
+    let inner_w = inner_content_width(box_w);
     let mut items = Vec::new();
 
-    // 1. 顶部边框（带语言标识）
-    items.push(create_header_item(code_block, available_width, style));
+    items.extend(header_items(&format_header(code_block.language_display(), box_w)));
 
-    // 2. 代码内容
     let noop = NoOpHighlighter::new();
     let hl = highlighter.unwrap_or(&noop);
     let highlighted_lines = hl.highlight(&code_block.language, &code_block.content);
 
-    for styled_line in highlighted_lines {
-        items.extend(render_styled_line(styled_line, available_width, style));
+    if highlighted_lines.is_empty() && code_block.content.is_empty() {
+        items.extend(content_row_items(&format_content_row("", inner_w)));
+    } else {
+        for styled_line in highlighted_lines {
+            items.extend(render_styled_line(styled_line, inner_w));
+        }
     }
 
-    // 3. 底部边框
-    items.push(create_footer_item(available_width, style));
+    items.push(border_item(
+        format_footer(box_w),
+        true,
+    ));
 
     items
 }
 
-/// 创建头部项（带语言标识的边框）
-fn create_header_item(
-    code_block: &CodeBlockModel,
-    width: u16,
-    style: &CodeBlockStyle,
-) -> InLineItem {
-    // 格式：┌─[rust]─────────────────
-    let language = code_block.language_display();
-    let prefix = format!("┌─[{}]", language);
-    let suffix_len = width.saturating_sub(prefix.len() as u16);
-    let suffix = "─".repeat(suffix_len as usize);
+fn header_items(parts: &HeaderParts) -> Vec<InLineItem> {
+    vec![
+        border_item(parts.left.clone(), false),
+        styled_item(parts.language.clone(), STYLE_INFO, false),
+        border_item(parts.right.clone(), true),
+    ]
+}
 
+fn content_row_items(parts: &ContentRowParts) -> Vec<InLineItem> {
+    vec![
+        border_item(parts.left.clone(), false),
+        styled_item(parts.content.clone(), STYLE_CONTENT, false),
+        border_item(parts.padding_and_right.clone(), true),
+    ]
+}
+
+fn border_item(text: String, line_break: bool) -> InLineItem {
+    styled_item(text, STYLE_BORDER, line_break)
+}
+
+fn styled_item(text: String, style: &str, line_break: bool) -> InLineItem {
     InLineItem {
         marks: crate::styles::InlineMarks::default(),
-        content: format!("{}{}", prefix, suffix),
-        display_content: format!("{}{}", prefix, suffix),
+        content: text.clone(),
+        display_content: text,
         link: None,
-        styles: vec!["code.block.header".to_string()],
-        line_break: false,
+        styles: vec![style.to_string()],
+        line_break,
     }
 }
 
-/// 创建底部项（边框）
-fn create_footer_item(width: u16, style: &CodeBlockStyle) -> InLineItem {
-    let line = "└".to_string() + &"─".repeat(width as usize);
-
-    InLineItem {
-        marks: crate::styles::InlineMarks::default(),
-        content: line.clone(),
-        display_content: line,
-        link: None,
-        styles: vec!["code.block.border".to_string()],
-        line_break: false,
-    }
-}
-
-/// 渲染带样式的行
-fn render_styled_line(
-    styled_line: StyledLine,
-    max_width: u16,
-    style: &CodeBlockStyle,
-) -> Vec<InLineItem> {
+fn render_styled_line(styled_line: StyledLine, inner_width: u16) -> Vec<InLineItem> {
     let mut items = Vec::new();
 
-    // 添加左侧边框
-    let left_border = InLineItem {
-        marks: crate::styles::InlineMarks::default(),
-        content: "│ ".to_string(),
-        display_content: "│ ".to_string(),
-        link: None,
-        styles: vec!["code.block.border".to_string()],
-        line_break: false,
-    };
-    items.push(left_border);
-
-    // 渲染代码内容
-    let content_width = max_width.saturating_sub(4); // 减去边框和边距
-
     for span in styled_line.spans {
-        // 处理长行换行
-        let split_lines = super::parser::split_code_line(&span.content, content_width);
-
-        for (i, line) in split_lines.iter().enumerate() {
-            if i > 0 {
-                // 换行后需要添加左侧边框
-                items.push(InLineItem {
-                    marks: crate::styles::InlineMarks::default(),
-                    content: "│ ".to_string(),
-                    display_content: "│ ".to_string(),
-                    link: None,
-                    styles: vec!["code.block.border".to_string()],
-                    line_break: true,
-                });
-            }
-
-            items.push(InLineItem {
-                marks: crate::styles::InlineMarks::default(),
-                content: line.clone(),
-                display_content: line.clone(),
-                link: None,
-                styles: vec!["code.block.content".to_string()], // 实际样式由高亮器决定
-                line_break: false,
-            });
+        let segments = split_by_display_width(&span.content, inner_width);
+        if segments.is_empty() {
+            items.extend(content_row_items(&format_content_row("", inner_width)));
+            continue;
+        }
+        for segment in segments {
+            items.extend(content_row_items(&format_content_row(&segment, inner_width)));
         }
     }
-
-    // 添加右侧边框
-    items.push(InLineItem {
-        marks: crate::styles::InlineMarks::default(),
-        content: " │".to_string(),
-        display_content: " │".to_string(),
-        link: None,
-        styles: vec!["code.block.border".to_string()],
-        line_break: true,
-    });
 
     items
 }
@@ -173,40 +121,122 @@ fn render_styled_line(
 /// 从主题获取代码块样式
 pub fn get_code_block_style(theme: &std::collections::HashMap<String, Style>) -> CodeBlockStyle {
     CodeBlockStyle {
-        border_style: theme.get("code.block.border").copied().unwrap_or_default(),
-        header_style: theme.get("code.block.header").copied().unwrap_or_default(),
+        border_style: theme.get(STYLE_BORDER).copied().unwrap_or_default(),
+        header_style: theme.get(STYLE_HEADER).copied().unwrap_or_default(),
         background: theme.get("code.block").copied().unwrap_or_default(),
-        content_style: theme.get("code.block.content").copied().unwrap_or_default(),
+        content_style: theme.get(STYLE_CONTENT).copied().unwrap_or_default(),
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use super::super::layout::MIN_BOX_WIDTH;
 
-    #[test]
-    fn test_create_header_item() {
-        let code_block = CodeBlockModel {
-            language: "rust".to_string(),
-            content: String::new(),
-            lines: Vec::new(),
-            is_fenced: true,
-            id: String::new(),
-        };
+    fn items_to_lines(items: Vec<InLineItem>) -> Vec<String> {
+        let mut lines: Vec<String> = Vec::new();
+        let mut current = String::new();
+        for item in items {
+            current.push_str(&item.display_content);
+            if item.line_break {
+                lines.push(current);
+                current = String::new();
+            }
+        }
+        if !current.is_empty() {
+            lines.push(current);
+        }
+        lines
+    }
 
-        let style = CodeBlockStyle::default();
-        let item = create_header_item(&code_block, 40, &style);
-
-        assert!(item.display_content.starts_with("┌─[rust]"));
-        assert!(item.display_content.contains("─"));
+    fn border_styles_only(styles: &[String]) -> bool {
+        styles.iter().all(|s| s == STYLE_BORDER || s == STYLE_HEADER)
     }
 
     #[test]
-    fn test_create_footer_item() {
-        let style = CodeBlockStyle::default();
-        let item = create_footer_item(40, &style);
+    fn test_vertical_borders_use_border_style() {
+        let code_block = CodeBlockModel {
+            language: "rust".to_string(),
+            content: "let x = 1;".to_string(),
+            lines: vec![],
+            is_fenced: true,
+            id: String::new(),
+        };
+        let items = render_code_block(&code_block, 40, &CodeBlockStyle::default(), None);
+        let vertical_items: Vec<_> = items
+            .iter()
+            .filter(|i| i.display_content == "│" || i.display_content.ends_with('│'))
+            .collect();
+        assert!(!vertical_items.is_empty());
+        for item in vertical_items {
+            assert!(
+                border_styles_only(&item.styles),
+                "vertical border should not use content color: {:?}",
+                item.styles
+            );
+        }
+    }
 
-        assert!(item.display_content.starts_with("└"));
-        assert!(item.display_content.contains("─"));
+    #[test]
+    fn test_each_row_has_uniform_width() {
+        let code_block = CodeBlockModel {
+            language: "rust".to_string(),
+            content: "let rust = \"Hello world!\"\nhttps://example.com/long-url-path".to_string(),
+            lines: vec![],
+            is_fenced: true,
+            id: String::new(),
+        };
+        let width = 50;
+        let items = render_code_block(&code_block, width, &CodeBlockStyle::default(), None);
+        let lines = items_to_lines(items);
+
+        for line in &lines {
+            assert_eq!(line.width(), width as usize, "line: {line}");
+        }
+    }
+
+    #[test]
+    fn test_code_block_visual_structure() {
+        let code_block = CodeBlockModel {
+            language: "rust".to_string(),
+            content: "let rust = \"Hello world!\"\nhttps://example.com/long-url".to_string(),
+            lines: vec![],
+            is_fenced: true,
+            id: String::new(),
+        };
+        let width = 40;
+        let lines = items_to_lines(render_code_block(
+            &code_block,
+            width,
+            &CodeBlockStyle::default(),
+            None,
+        ));
+
+        assert!(lines.len() >= 4);
+        assert!(lines[0].starts_with('╭'));
+        assert!(lines[0].ends_with('╮'));
+        assert!(lines[1].starts_with('│'));
+        assert!(lines[1].ends_with('│'));
+        assert!(lines.iter().any(|l| l.contains("let rust")));
+        assert!(lines.last().unwrap().starts_with('╰'));
+        assert!(lines.last().unwrap().ends_with('╯'));
+    }
+
+    #[test]
+    fn test_respects_minimum_width() {
+        let code_block = CodeBlockModel {
+            language: "rust".to_string(),
+            content: "x".to_string(),
+            lines: vec![],
+            is_fenced: true,
+            id: String::new(),
+        };
+        let lines = items_to_lines(render_code_block(
+            &code_block,
+            MIN_BOX_WIDTH,
+            &CodeBlockStyle::default(),
+            None,
+        ));
+        assert!(lines.iter().all(|l| l.width() == MIN_BOX_WIDTH as usize));
     }
 }

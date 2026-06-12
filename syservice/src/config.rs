@@ -1,9 +1,6 @@
 //! 配置管理模块
 //!
-//! 支持多种配置来源（优先级从高到低）：
-//! 1. 环境变量
-//! 2. 配置文件（跨平台路径）
-//! 3. 默认值
+//! 从配置文件加载；若不存在则使用默认值。
 //!
 //! # 配置文件路径
 //!
@@ -16,14 +13,8 @@
 //! base_url = "http://127.0.0.1:6806"
 //! token = "your-api-token"
 //! timeout_secs = 30
+//! workspace_dir = "/path/to/SiYuanKnowledgeBase/data"
 //! ```
-//!
-//! # 环境变量
-//!
-//! - `SIYUAN_API_TOKEN` - API 令牌（可选）
-//! - `SIYUAN_API_URL` - API 基础 URL（可选，默认：http://127.0.0.1:6806）
-//! - `SIYUAN_TIMEOUT_SECS` - 超时时间（可选，默认：30）
-//! - `SIYUAN_WORKSPACE_DIR` - 思源笔记工作空间目录（可选）
 
 use std::env;
 use std::fs;
@@ -290,52 +281,13 @@ timeout_secs = {}
 impl Config {
     pub fn builder() -> ConfigBuilder { ConfigBuilder::new() }
 
-    /// 从环境变量加载配置
-    ///
-    /// 所有配置项都是可选的，未设置时使用默认值
-    pub fn from_env() -> Self {
-        let mut config = Config::default();
-        
-        if let Ok(token) = env::var("SIYUAN_API_TOKEN") {
-            config.token = token;
-        }
-        if let Ok(url) = env::var("SIYUAN_API_URL") {
-            config.base_url = url.trim_end_matches('/').to_string();
-        }
-        if let Ok(timeout) = env::var("SIYUAN_TIMEOUT_SECS") {
-            config.timeout_secs = timeout.parse().unwrap_or(30);
-        }
-        if let Ok(workspace) = env::var("SIYUAN_WORKSPACE_DIR") {
-            config.workspace_dir = Some(workspace.trim_end_matches('/').to_string());
-        }
-        
-        config
-    }
-
     /// 从配置文件加载配置（如果存在）
     pub fn from_file() -> Option<Self> {
         load_from_default_path()
     }
 
-    /// 从环境变量或配置文件加载配置（环境变量优先）
-    ///
-    /// 如果环境变量和配置文件都不存在，返回默认配置
+    /// 从配置文件加载；若不存在则返回默认配置。
     pub fn load() -> Self {
-        // 优先使用环境变量
-        if env::var("SIYUAN_API_TOKEN").is_ok()
-            || env::var("SIYUAN_API_URL").is_ok()
-            || env::var("SIYUAN_TIMEOUT_SECS").is_ok()
-            || env::var("SIYUAN_WORKSPACE_DIR").is_ok()
-        {
-            let config = Self::from_env();
-            log_info(
-                "config",
-                format!("loaded from env: {}", config_summary(&config)),
-            );
-            return config;
-        }
-        
-        // 回退到配置文件
         if let Some(config) = Self::from_file() {
             log_info(
                 "config",
@@ -343,8 +295,7 @@ impl Config {
             );
             return config;
         }
-        
-        // 使用默认配置
+
         let config = Config::default();
         log_info(
             "config",
@@ -353,7 +304,7 @@ impl Config {
         config
     }
 
-    /// 从环境变量或配置文件加载配置（同 `load()`）
+    /// 从配置文件加载（同 `load()`）
     pub fn load_or_default() -> Self {
         Self::load()
     }

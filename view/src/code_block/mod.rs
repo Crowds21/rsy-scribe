@@ -19,8 +19,11 @@ pub mod model;
 pub mod parser;
 pub mod renderer;
 pub mod highlight;
+pub mod layout;
+pub mod glyphs;
 
 pub use model::CodeBlockModel;
 pub use parser::parse_code_block;
 pub use renderer::{render_code_block, get_code_block_style, CodeBlockStyle};
 pub use highlight::{SyntaxHighlighter, StyledLine, StyledSpan, NoOpHighlighter};
+pub use layout::{LIST_ITEM_PREFIX_WIDTH, MIN_BOX_WIDTH};

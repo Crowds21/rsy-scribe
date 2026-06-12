@@ -18,3 +18,12 @@ notes=" "
 
 code_block=" "
 table="󰓫 "
+
+# 代码块外框（Nerd Font / 圆角 box drawing，可在终端字体中替换为其它 glyph）
+[box]
+top_left = "╭"
+top_right = "╮"
+bottom_left = "╰"
+bottom_right = "╯"
+horizontal = "─"
+vertical = "│"
