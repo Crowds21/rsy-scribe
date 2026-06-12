@@ -4,16 +4,25 @@ All notable changes to this project will be documented in this file.
 
 ## [unreleased]
 
+## [0.2.0] - 2026-06-11
+
 ### 🚀 Features
 
-- 新增终端 resize 处理
-- 添加"行"级抽象.
-- 文本块的换行处理
-- ListBlock 行生成
+- 搜索打开思源笔记并在终端渲染（段落、列表、标题、代码块）
+- Buffer 栏展示多文件标签，Gutter 行号与块图标
+- H1–H6 分级标题样式与装饰线（`view/heading` 模块）
+- 代码块圆角边框、终端宽度换行
+- 行内复合样式与 `theme.toml` / `icons.toml` 主题
+- 统一日志模块（`infrastructure`）与配置文件加载
+
+### 🐛 Bug Fixes
+
+- 修复文档滚动高度计算与 scroll 状态持久化
 
 ### 🚜 Refactor
 
-- Syservice 添加测试工具mod
+- 清理未使用模块与依赖，合并 `dev_scroll` 至 `main`
+- 从版本控制中移除 `.idea` IDE 配置
 
 ## [0.1.0] - 2025-06-15
 
