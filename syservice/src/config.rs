@@ -42,7 +42,7 @@ pub struct Config {
     pub base_url: String,
     pub token: String,
     pub timeout_secs: u64,
-    /// 思源笔记工作空间目录（如：/Users/crowds/Notes/SiYuanKnowledgeBase/data）
+    /// 思源笔记工作空间目录（如：/path/to/SiYuanKnowledgeBase/data）
     pub workspace_dir: Option<String>,
 }
 

@@ -11,22 +11,12 @@ scribe/
 ├── README.md                 # 项目概述（面向用户）
 ├── CONTRIBUTING.md           # 贡献指南
 ├── DOC_GUIDE.md              # 本文档（文档规范）
-│
-├── docs/                     # 用户文档（可选）
-│   ├── user-guide.md
-│   └── faq.md
-│
-├── view/doc/                 # 模块设计文档
-│   ├── CODE_BLOCK_DESIGN.md  # 代码块设计
-│   ├── inline-mark-type-refactor.md
-│   └── IMPLEMENTATION.md
-│
-├── syservice/doc/            # 模块设计文档
-│   └── CONFIG_IMPLEMENTATION.md
-│
-└── src/                      # 代码即文档
-    ├── lib.rs                # 包含 API 文档注释
-    └── ...
+├── docs/
+│   ├── README.md             # 文档索引
+│   ├── design/               # 设计文档 001–010
+│   └── user-guide/           # 用户指南
+├── syservice/CONFIG.md       # 配置说明
+└── {app,tui,view,...}/src/   # 代码 + rustdoc
 ```
 
 ### 1.2 Rust 原生文档支持
@@ -277,9 +267,9 @@ cargo-docs = "0.1"
 
 | 位置 | 用途 |
 |------|------|
-| `view/doc/` | View 模块设计文档 |
-| `syservice/doc/` | Syservice 模块设计文档 |
-| `tui/doc/` | TUI 模块设计文档 |
+| `docs/design/` | 功能与模块设计文档（001–010） |
+| `docs/user-guide/` | 用户指南 |
+| `syservice/CONFIG.md` | 运行时配置说明 |
 
 ### 5.3 代码目录
 
@@ -318,18 +308,13 @@ git tag -l
 
 ```
 scribe/
-├── view/
-│   ├── doc/
-│   │   └── CODE_BLOCK_DESIGN.md    # 详细设计文档
-│   └── src/
-│       ├── document.rs             # 集成代码
-│       └── code_block/
-│           ├── mod.rs              # 模块文档
-│           ├── parser.rs           # 解析器（带文档注释）
-│           ├── renderer.rs         # 渲染器（带文档注释）
-│           └── highlight.rs        # 高亮接口（带文档注释）
-└── docs/
-    └── user-guide.md               # 用户指南（提及代码块功能）
+├── docs/design/
+│   ├── 001-code-block-rendering.md
+│   └── 007-view-module.md
+└── view/src/code_block/
+    ├── mod.rs              # 模块 rustdoc
+    ├── parser.rs
+    └── renderer.rs
 ```
 
 ---

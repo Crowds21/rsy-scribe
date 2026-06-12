@@ -108,10 +108,10 @@ mod tests {
     fn test_load_node_from_workspace() {
         // 需要配置工作空间目录
         let config = Config::builder()
-            .workspace_dir("/Users/crowds/Notes/SiYuanKnowledgeBase/data")
+            .workspace_dir("/path/to/SiYuanKnowledgeBase/data")
             .build();
-        
-        let relative_path = "notebooks/20230620162729-levf2as/20230629142416-fk29t9w/20230629142458-ffxtme3/20240107160843-8f02mqs.sy";
+
+        let relative_path = "notebooks/{box_id}/{notebook_path}/document.sy";
         let json_data = load_json_node_from_workspace(relative_path, &config).unwrap();
         
         let serialized = serde_json::to_string_pretty(&json_data).unwrap();

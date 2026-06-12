@@ -118,6 +118,8 @@ app            应用入口、事件循环、终端生命周期
 
 详见 [CHANGELOG.md](CHANGELOG.md)。
 
+设计文档见 [`docs/`](docs/README.md)。
+
 ## 开发路线
 
 - [ ] 多笔记并行加载与 Buffer 栏切换

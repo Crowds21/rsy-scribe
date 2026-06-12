@@ -6,7 +6,6 @@
 
 **运行方式：**
 ```bash
-cd /Users/crowds/RustroverProjects/scribe
 cargo run --package view --example test_styles
 ```
 

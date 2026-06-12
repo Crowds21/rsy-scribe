@@ -187,26 +187,24 @@ async fn rename_doc_by_id(&self, id: &str, title: &str) -> Result<()>;
 
 ## 测试配置
 
-### 环境变量
+集成测试通过 `Config::load()` 读取本地 `~/.config/scribe/config.toml`（或平台等价路径），**不在代码中硬编码 token**。
 
-测试使用以下硬编码配置（用于本地开发）：
+本地需配置：
 
-```rust
-const TEST_BASE_URL: &str = "http://127.0.0.1:6806";
-const TEST_TOKEN: &str = "1g4rmbq473pv40jo";
+```toml
+base_url = "http://127.0.0.1:6806"
+token = "your-api-token-here"
+workspace_dir = "/path/to/SiYuanKnowledgeBase/data"
 ```
 
-### 自定义配置
-
-可以通过修改 `create_client()` 函数来自定义配置：
+自定义客户端示例：
 
 ```rust
 fn create_client() -> HttpClient {
     let config = Config::builder()
-        .base_url("http://your-siyuan-instance:6806")
-        .token("your-token")
+        .base_url("http://127.0.0.1:6806")
+        .token("your-api-token-here")
         .timeout_secs(60)
-        .max_retries(5)
         .build();
     HttpClient::new(&config).expect("Failed to create HTTP client")
 }

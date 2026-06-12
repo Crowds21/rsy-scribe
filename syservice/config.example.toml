@@ -1,5 +1,5 @@
 # SiYuan 配置文件示例
-# 
+#
 # 使用方法：
 # 1. 复制此文件为 config.toml
 # 2. 放置到以下路径之一：
@@ -7,16 +7,18 @@
 #    - macOS: ~/Library/Application Support/scribe/config.toml
 #    - Windows: %APPDATA%\scribe\config.toml
 #
-# 或者设置环境变量（优先级更高）：
-#    export SIYUAN_API_TOKEN="your-token-here"
-#    export SIYUAN_API_URL="http://127.0.0.1:6806"
+# 详细说明见 syservice/CONFIG.md
 
 # SiYuan API 基础 URL
 base_url = "http://127.0.0.1:6806"
 
-# API 令牌（可选）
+# API 令牌（搜索等功能需要）
 # 在思源笔记中：设置 -> 关于 -> API token
-token = "1g4rmbq473pv40jo"
+token = "your-api-token-here"
 
 # HTTP 请求超时时间（秒）
 timeout_secs = 30
+
+# 工作空间 data 目录（读取 .sy 文件必需）
+# 示例："/path/to/SiYuanKnowledgeBase/data"
+workspace_dir = "/path/to/SiYuanKnowledgeBase/data"
